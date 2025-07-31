@@ -40,7 +40,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
-    implementation("com.github.QuadFlask:colorpicker:0.0.13")
+    implementation("yuku.ambilwarna:ambilwarna:2.0.1") // فقط این ColorPicker استفاده می‌شود
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
