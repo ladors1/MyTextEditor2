@@ -12,8 +12,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.view.View
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
-import com.flask.colorpicker.ColorPickerDialog
-import com.flask.colorpicker.ColorPickerDialogListener
+import yuku.ambilwarna.AmbilWarnaDialog   // <-- فقط همین ایمپورت جدید!
 
 class MainActivity : AppCompatActivity() {
 
@@ -118,26 +117,20 @@ class MainActivity : AppCompatActivity() {
         return validFonts
     }
 
-    // Color Picker حرفه‌ای دایره‌ای و هماهنگ با متن انتخابی
+    // استفاده از AmbilWarna برای ColorPicker
     fun openColorPicker(isText: Boolean) {
-        ColorPickerDialog.newBuilder()
-            .setDialogType(ColorPickerDialog.TYPE_CUSTOM)
-            .setColor(if (isText) textColor else bgColor)
-            .setAllowCustom(true)
-            .setShowAlphaSlider(true)
-            .setColorWheelType(ColorPickerDialog.ColorWheelType.FLOWER)
-            .setColorPickerDialogListener(object : ColorPickerDialogListener {
-                override fun onColorSelected(dialogId: Int, color: Int) {
-                    if (isText) {
-                        applyColorToSelection(color)
-                    } else {
-                        bgColor = color
-                        renderTextImage()
-                    }
+        val initialColor = if (isText) textColor else bgColor
+        AmbilWarnaDialog(this, initialColor, object : AmbilWarnaDialog.OnAmbilWarnaListener {
+            override fun onOk(dialog: AmbilWarnaDialog?, color: Int) {
+                if (isText) {
+                    applyColorToSelection(color)
+                } else {
+                    bgColor = color
+                    renderTextImage()
                 }
-                override fun onDialogDismissed(dialogId: Int) {}
-            })
-            .show(this)
+            }
+            override fun onCancel(dialog: AmbilWarnaDialog?) {}
+        }).show()
     }
 
     // رنگی کردن هر قسمت انتخابی از متن با Spannable
@@ -155,7 +148,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // رندر کردن متن و پیش‌نمایش تصویر
     fun renderTextImage() {
         val width = 1080
         val height = 1920
@@ -176,7 +168,6 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "مشکل در لود فونت (${currentFont}): ${e.message}", Toast.LENGTH_SHORT).show()
         }
 
-        // متن را بدون span فقط با رنگ کلی ذخیره کن (برای ذخیره رنگی span حرفه‌ای کد خاص می‌خواد)
         paint.color = textColor
         val text = etText.text.toString()
         val textLines = text.split("\n")
