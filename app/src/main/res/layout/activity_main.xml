@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+<LinearLayout
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/etText"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:gravity="center"
+        android:textSize="26sp"
+        android:hint="متن دلخواهت رو بنویس..."
+        android:textDirection="rtl"
+        android:background="@android:color/transparent"
+        android:inputType="textMultiLine"/>
+
+    <Spinner
+        android:id="@+id/spinnerFont"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="12dp">
+
+        <Button
+            android:id="@+id/btnTextColor"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="رنگ متن"/>
+
+        <Button
+            android:id="@+id/btnBgColor"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="رنگ بک‌گراند"/>
+
+        <Button
+            android:id="@+id/btnTransparentBg"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="بدون بک‌گراند"/>
+    </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/seekFontSize"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="70"
+        android:progress="26"
+        android:layout_marginTop="10dp"/>
+
+    <TextView
+        android:id="@+id/tvFontSize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="اندازه فونت: 26"
+        android:layout_gravity="center"
+        android:layout_marginBottom="10dp"/>
+
+    <ImageView
+        android:id="@+id/imagePreview"
+        android:layout_width="match_parent"
+        android:layout_height="350dp"
+        android:layout_marginTop="18dp"
+        android:background="#FFE"
+        android:scaleType="fitCenter"/>
+
+    <Button
+        android:id="@+id/btnSaveImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ذخیره عکس برای استوری"
+        android:layout_marginTop="20dp"/>
+</LinearLayout>
+</ScrollView>
