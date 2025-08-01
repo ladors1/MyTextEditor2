@@ -14,7 +14,6 @@ import android.widget.SeekBar.OnSeekBarChangeListener
 import com.skydoves.colorpickerview.ColorEnvelope
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import com.skydoves.colorpickerview.ColorPickerDialog
-import android.view.Gravity
 
 class MainActivity : AppCompatActivity() {
 
@@ -49,10 +48,6 @@ class MainActivity : AppCompatActivity() {
         btnSaveImage = findViewById(R.id.btnSaveImage)
         seekFontSize = findViewById(R.id.seekFontSize)
         tvFontSize = findViewById(R.id.tvFontSize)
-
-        // --- رفع مشکل راست‌چین (EditText) ---
-        etText.gravity = Gravity.RIGHT or Gravity.TOP
-        etText.textDirection = View.TEXT_DIRECTION_RTL
 
         fontList = getFontList(this)
         if (fontList.isEmpty()) {
@@ -134,14 +129,14 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // رفع کامل مشکل رنگ span و رنگ کل متن
+    // رنگ انتخابی برای بخش انتخاب شده یا کل متن (ویرایشگر)
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         val spannable = etText.text as Spannable
 
         if (start < end) {
-            // پاک‌کردن span قبلی فقط در محدوده انتخاب شده
+            // پاک‌کردن spanهای قبلی فقط در بازه انتخاب شده
             val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
             for (span in spans) {
                 spannable.removeSpan(span)
@@ -156,7 +151,7 @@ class MainActivity : AppCompatActivity() {
             // اگر انتخاب نداره، کل متن رنگی بشه
             etText.setTextColor(color)
             textColor = color
-            // تمام spanها پاک شود
+            // همه spanها پاک بشه که فقط رنگ کل متن بمونه
             val allSpans = spannable.getSpans(0, spannable.length, ForegroundColorSpan::class.java)
             for (span in allSpans) {
                 spannable.removeSpan(span)
@@ -165,7 +160,7 @@ class MainActivity : AppCompatActivity() {
         renderTextImage()
     }
 
-    // رسم متن با رنگ span (یا پیش‌فرض) و کاملاً راست‌چین
+    // نمایش تصویر با لحاظ کردن رنگ spanها (برای استوری و ... دقیقا همون ترکیب رنگی)
     fun renderTextImage() {
         val width = 1080
         val height = 1920
@@ -176,7 +171,7 @@ class MainActivity : AppCompatActivity() {
         val paint = Paint()
         paint.textSize = fontSize * 2.5f
         paint.isAntiAlias = true
-        paint.textAlign = Paint.Align.RIGHT // راست‌چین
+        paint.textAlign = Paint.Align.CENTER
 
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
@@ -187,37 +182,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         val text = etText.text
-        val lines = text.split("\n")
-        var y = height / 2f - (lines.size - 1) * fontSize * 1.5f
-
+        val textLines = text.split("\n")
+        val yStart = height / 2 - (textLines.size - 1) * fontSize * 1.5f
         var charOffset = 0
-
-        for (line in lines) {
-            if (line.isEmpty()) {
-                y += fontSize * 2.5f
-                charOffset += 1
-                continue
-            }
-            // محاسبه محل شروع راست‌چین (انتهای خط وسط تصویر)
-            val lineWidth = paint.measureText(line)
-            val x = width - (width - lineWidth) / 2f
-
-            // تک‌تک کاراکترها با span رنگ خودشان
-            var i = 0
-            while (i < line.length) {
-                val c = line[i]
+        for ((i, line) in textLines.withIndex()) {
+            var x = width / 2f
+            var j = 0
+            while (j < line.length) {
                 var charColor = textColor
-                val spans = (text as Spannable).getSpans(charOffset + i, charOffset + i + 1, ForegroundColorSpan::class.java)
+                val spans = (text as Spannable).getSpans(charOffset + j, charOffset + j + 1, ForegroundColorSpan::class.java)
                 if (spans.isNotEmpty()) {
-                    charColor = spans[spans.size - 1].foregroundColor
+                    charColor = spans.last().foregroundColor
                 }
                 paint.color = charColor
-                // هر کاراکتر را جدا جدا با مکان مناسب چاپ کن
-                val charX = x - paint.measureText(line.substring(i))
-                canvas.drawText(c.toString(), charX, y, paint)
-                i++
+                val charX = x - paint.measureText(line) / 2 + paint.measureText(line.substring(0, j))
+                canvas.drawText(line[j].toString(), charX, yStart + i * fontSize * 2.5f, paint)
+                j++
             }
-            y += fontSize * 2.5f
             charOffset += line.length + 1
         }
         imagePreview.setImageBitmap(bmp)
