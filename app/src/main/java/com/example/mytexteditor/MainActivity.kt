@@ -129,14 +129,14 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // رنگ انتخابی برای بخش انتخاب شده یا کل متن (ویرایشگر)
+    // حل کامل مشکل رنگ برای متن انتخابی یا کل متن (در ادیت و خروجی)
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         val spannable = etText.text as Spannable
 
         if (start < end) {
-            // پاک‌کردن spanهای قبلی فقط در بازه انتخاب شده
+            // حذف spanهای قبلی فقط در بازه انتخاب شده
             val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
             for (span in spans) {
                 spannable.removeSpan(span)
@@ -149,21 +149,21 @@ class MainActivity : AppCompatActivity() {
             )
         } else {
             // اگر انتخاب نداره، کل متن رنگی بشه
-            etText.setTextColor(color)
-            textColor = color
-            // همه spanها پاک بشه که فقط رنگ کل متن بمونه
             val allSpans = spannable.getSpans(0, spannable.length, ForegroundColorSpan::class.java)
             for (span in allSpans) {
                 spannable.removeSpan(span)
             }
+            etText.setTextColor(color)
+            textColor = color
         }
         renderTextImage()
     }
 
-    // نمایش تصویر با لحاظ کردن رنگ spanها (برای استوری و ... دقیقا همون ترکیب رنگی)
+    // حل مشکل برعکس شدن متن فارسی و SafeZone در خروجی عکس
     fun renderTextImage() {
         val width = 1080
         val height = 1920
+        val safeZone = 80f // فاصله از پایین و لبه‌ها
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         if (!isTransparentBg)
@@ -171,22 +171,21 @@ class MainActivity : AppCompatActivity() {
         val paint = Paint()
         paint.textSize = fontSize * 2.5f
         paint.isAntiAlias = true
-        paint.textAlign = Paint.Align.CENTER
+        paint.textAlign = Paint.Align.RIGHT
 
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
             paint.typeface = tf
         } catch (e: Exception) {
             paint.typeface = Typeface.DEFAULT
-            Toast.makeText(this, "مشکل در لود فونت (${currentFont}): ${e.message}", Toast.LENGTH_SHORT).show()
         }
 
         val text = etText.text
         val textLines = text.split("\n")
-        val yStart = height / 2 - (textLines.size - 1) * fontSize * 1.5f
+        val yStart = (height - ((textLines.size - 1) * fontSize * 2.5f)) / 2f
         var charOffset = 0
         for ((i, line) in textLines.withIndex()) {
-            var x = width / 2f
+            val x = width - safeZone // همیشه نزدیک راست تصویر، با فاصله مناسب
             var j = 0
             while (j < line.length) {
                 var charColor = textColor
@@ -195,7 +194,8 @@ class MainActivity : AppCompatActivity() {
                     charColor = spans.last().foregroundColor
                 }
                 paint.color = charColor
-                val charX = x - paint.measureText(line) / 2 + paint.measureText(line.substring(0, j))
+                val prefix = line.substring(0, j)
+                val charX = x - paint.measureText(line.substring(j))
                 canvas.drawText(line[j].toString(), charX, yStart + i * fontSize * 2.5f, paint)
                 j++
             }
