@@ -118,32 +118,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openColorPicker(isText: Boolean) {
-        ColorPickerDialog.Builder(this)
-            .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
-            .setPositiveButton("تأیید",
-                ColorEnvelopeListener { envelope, _ ->
-                    if (isText) {
-                        applyColorToSelection(envelope.color)
-                    } else {
-                        // برای پس‌زمینه هم رنگ را مات می‌کنیم
+        if (isText) {
+            // *** تست تشخیصی: همیشه رنگ قرمز را اعمال کن ***
+            Toast.makeText(this, "تست رنگ قرمز...", Toast.LENGTH_SHORT).show()
+            applyColorToSelection(Color.RED)
+        } else {
+            // دیالوگ برای رنگ پس‌زمینه همچنان کار می‌کند
+            ColorPickerDialog.Builder(this)
+                .setTitle("انتخاب رنگ پس‌زمینه")
+                .setPositiveButton("تأیید",
+                    ColorEnvelopeListener { envelope, _ ->
                         bgColor = (envelope.color and 0x00FFFFFF) or (0xFF000000).toInt()
                         renderTextImage(etText.text)
-                    }
-                })
-            .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
-            .show()
+                    })
+                .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
+                .show()
+        }
     }
 
-    private fun applyColorToSelection(colorFromPicker: Int) {
-        // *** خط کلیدی نهایی: اصلاح رنگ معیوب از کتابخانه ***
-        // ما کانال شفافیت (Alpha) را حذف و آن را با 100% مات (FF) جایگزین می‌کنیم
-        val finalOpaqueColor = (colorFromPicker and 0x00FFFFFF) or (0xFF000000).toInt()
-
+    private fun applyColorToSelection(colorToApply: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
 
         if (etText.length() == 0) {
-            etText.setTextColor(finalOpaqueColor)
+            etText.setTextColor(colorToApply)
             return
         }
 
@@ -156,7 +154,7 @@ class MainActivity : AppCompatActivity() {
         newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
-        newText.setSpan(ForegroundColorSpan(finalOpaqueColor), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        newText.setSpan(ForegroundColorSpan(colorToApply), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         isProgrammaticTextChange = true
         etText.text = newText
@@ -246,4 +244,4 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "خطا در ذخیره تصویر: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
-}```
+}
