@@ -33,13 +33,12 @@ class MainActivity : AppCompatActivity() {
     lateinit var tvFontSize: TextView
 
     // متغیرهای وضعیت
-    var textColor = Color.BLACK
+    var textColor = Color.BLACK // رنگ پیش‌فرض
     var bgColor = Color.WHITE
     var isTransparentBg = false
     var fontSize = 26f
     lateinit var fontList: List<String>
     var currentFont = ""
-    private var isEditingText = false // برای جلوگیری از حلقه‌های بی‌پایان در TextWatcher
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,16 +55,40 @@ class MainActivity : AppCompatActivity() {
         seekFontSize = findViewById(R.id.seekFontSize)
         tvFontSize = findViewById(R.id.tvFontSize)
 
+        // لیسنر برای تغییرات متن که فقط پیش‌نمایش را آپدیت می‌کند
+        etText.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) { renderTextImage() }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
         // بارگذاری فونت‌ها
+        setupFonts()
+
+        // تنظیم اسپینر فونت
+        setupFontSpinner()
+
+        // تنظیم SeekBar برای اندازه فونت
+        setupFontSizeSeeker()
+
+        // تنظیم دکمه‌ها
+        setupButtons()
+
+        // رندر اولیه
+        renderTextImage()
+    }
+
+    private fun setupFonts() {
         fontList = getFontList(this)
         if (fontList.isEmpty()) {
-            Toast.makeText(this, "هیچ فونت سالمی پیدا نشد! فونت مناسب در assets/fonts قرار بده.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "هیچ فونت سالمی پیدا نشد!", Toast.LENGTH_LONG).show()
             finish()
             return
         }
         currentFont = fontList[0]
+    }
 
-        // تنظیم اسپینر فونت
+    private fun setupFontSpinner() {
         val fontNames = fontList.map { it.substringBefore(".") }
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, fontNames)
         spinnerFont.adapter = adapter
@@ -76,19 +99,9 @@ class MainActivity : AppCompatActivity() {
             }
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
+    }
 
-        // لیسنر برای تغییرات متن
-        etText.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                if (!isEditingText) {
-                    renderTextImage()
-                }
-            }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
-
-        // تنظیم SeekBar برای اندازه فونت
+    private fun setupFontSizeSeeker() {
         seekFontSize.progress = fontSize.toInt()
         tvFontSize.text = "اندازه فونت: ${fontSize.toInt()}"
         seekFontSize.setOnSeekBarChangeListener(object: OnSeekBarChangeListener{
@@ -100,8 +113,9 @@ class MainActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+    }
 
-        // تنظیم دکمه‌ها
+    private fun setupButtons() {
         btnTextColor.setOnClickListener { openColorPicker(isText = true) }
         btnBgColor.setOnClickListener { openColorPicker(isText = false) }
         btnTransparentBg.setOnClickListener {
@@ -109,25 +123,6 @@ class MainActivity : AppCompatActivity() {
             renderTextImage()
         }
         btnSaveImage.setOnClickListener { saveImage() }
-
-        // رندر اولیه
-        applyColorToSelection(textColor) // اعمال رنگ پیش‌فرض اولیه
-    }
-
-    private fun getFontList(context: Context): List<String> {
-        val allFonts = try {
-            context.assets.list("fonts")?.filter { it.endsWith(".ttf", true) || it.endsWith(".otf", true) } ?: listOf()
-        } catch (e: IOException) {
-            listOf()
-        }
-        val validFonts = mutableListOf<String>()
-        for (f in allFonts) {
-            try {
-                Typeface.createFromAsset(context.assets, "fonts/$f")
-                validFonts.add(f)
-            } catch (e: Exception) { /* نادیده گرفتن فونت‌های خراب */ }
-        }
-        return validFonts
     }
 
     private fun openColorPicker(isText: Boolean) {
@@ -145,50 +140,28 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
             .show()
     }
-
-    // *** روش جدید و قطعی برای اعمال رنگ ***
+    
+    // *** روش نهایی و مستقیم برای اعمال رنگ ***
     private fun applyColorToSelection(color: Int) {
-        val originalText = etText.text
-        val ssb = SpannableStringBuilder(originalText)
-
+        val editable = etText.editableText
         val start = etText.selectionStart
         val end = etText.selectionEnd
 
         val targetStart = if (start == end) 0 else start
-        val targetEnd = if (start == end) originalText.length else end
+        val targetEnd = if (start == end) editable.length else end
 
-        // اگر متنی برای رنگ کردن وجود ندارد
-        if (targetStart >= targetEnd && etText.length() > 0) {
-            return
-        }
+        if (targetStart >= targetEnd) return
 
-        // اگر هیچ متنی وجود ندارد، فقط رنگ پیش‌فرض را برای آینده تنظیم کن
-        if (etText.length() == 0) {
-            textColor = color
-            return
-        }
-        
-        // حذف Spanهای رنگی قبلی از محدوده
-        val oldSpans = ssb.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java)
+        // حذف رنگ‌های قبلی از محدوده
+        val oldSpans = editable.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java)
         for (span in oldSpans) {
-            ssb.removeSpan(span)
+            editable.removeSpan(span)
         }
 
-        // اعمال Span رنگی جدید
-        ssb.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        
-        // اگر کل متن رنگ شده، رنگ پیش‌فرض را هم آپدیت کن
-        if (start == end) {
-            textColor = color
-        }
-
-        isEditingText = true // جلوگیری از فراخوانی render مضاعف توسط TextWatcher
-        etText.setText(ssb, TextView.BufferType.SPANNABLE)
-        etText.setSelection(end) // بازگرداندن مکان‌نما به جای درست
-        isEditingText = false
-
-        renderTextImage() // فراخوانی مستقیم برای اطمینان از آپدیت شدن پیش‌نمایش
+        // اعمال رنگ جدید
+        editable.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
+
 
     private fun renderTextImage() {
         val width = 1080
@@ -203,7 +176,14 @@ class MainActivity : AppCompatActivity() {
         } else {
             canvas.drawColor(bgColor)
         }
+        
+        // متن را از EditText دریافت می‌کنیم
+        val textToRender: Spanned = etText.text
 
+        // *** مرحله اشکال‌زدایی: بررسی تعداد رنگ‌های موجود در متن ***
+        val spans = textToRender.getSpans(0, textToRender.length, ForegroundColorSpan::class.java)
+        Toast.makeText(this, "Rendering with ${spans.size} color spans", Toast.LENGTH_SHORT).show()
+        
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
         textPaint.color = this.textColor // رنگ پیش‌فرض برای بخش‌های بدون رنگ خاص
         textPaint.textSize = fontSize * 2.5f
@@ -214,8 +194,9 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) {
             textPaint.typeface = Typeface.DEFAULT
         }
-
-        val textLayout = StaticLayout.Builder.obtain(etText.text, 0, etText.text.length, textPaint, width - (safeZone * 2).toInt())
+        
+        // StaticLayout خودش تمام Spanها را برای رنگ‌آمیزی متن تشخیص می‌دهد
+        val textLayout = StaticLayout.Builder.obtain(textToRender, 0, textToRender.length, textPaint, width - (safeZone * 2).toInt())
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setLineSpacing(0f, 1.0f)
             .setIncludePad(true)
@@ -232,6 +213,19 @@ class MainActivity : AppCompatActivity() {
         imagePreview.setImageBitmap(bmp)
     }
 
+    private fun getFontList(context: Context): List<String> {
+        return try {
+            context.assets.list("fonts")
+                ?.filter { it.endsWith(".ttf", true) || it.endsWith(".otf", true) }
+                ?.filter {
+                    try { Typeface.createFromAsset(context.assets, "fonts/$it"); true }
+                    catch (e: Exception) { false }
+                } ?: listOf()
+        } catch (e: IOException) {
+            listOf()
+        }
+    }
+    
     private fun saveImage() {
         val drawable = imagePreview.drawable as? BitmapDrawable
         if (drawable == null) {
@@ -254,9 +248,7 @@ class MainActivity : AppCompatActivity() {
 
         try {
             uri?.let {
-                val outputStream = resolver.openOutputStream(it)
-                outputStream.use { stream ->
-                    if (stream == null) throw IOException("Failed to get output stream.")
+                resolver.openOutputStream(it)?.use { stream ->
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
                 }
                 Toast.makeText(this, "تصویر با موفقیت در گالری ذخیره شد!", Toast.LENGTH_LONG).show()
