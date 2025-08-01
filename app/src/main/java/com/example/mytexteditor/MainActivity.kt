@@ -133,13 +133,16 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun applyColorToSelection(color: Int) {
+    private fun applyColorToSelection(colorFromPicker: Int) {
+        // *** خط کلیدی نهایی: اصلاح رنگ معیوب از کتابخانه ***
+        // ما کانال شفافیت (Alpha) را حذف و آن را با 100% مات جایگزین می‌کنیم
+        val finalOpaqueColor = (colorFromPicker and 0x00FFFFFF) or (0xFF000000).toInt()
+
         val start = etText.selectionStart
         val end = etText.selectionEnd
-        val finalColor = color or -0x1000000 // اطمینان از اینکه رنگ کاملاً مات است
 
         if (etText.length() == 0) {
-            etText.setTextColor(finalColor)
+            etText.setTextColor(finalOpaqueColor)
             return
         }
 
@@ -152,7 +155,7 @@ class MainActivity : AppCompatActivity() {
         newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
-        newText.setSpan(ForegroundColorSpan(finalColor), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        newText.setSpan(ForegroundColorSpan(finalOpaqueColor), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         isProgrammaticTextChange = true
         etText.text = newText
@@ -189,9 +192,6 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) { /* fallback to default */ }
             setTextColor(Color.BLACK)
             gravity = android.view.Gravity.CENTER
-
-            // *** خط کلیدی برای رفع مشکل رندرینگ ***
-            // این خط به اندروید می‌گوید که از روش نرم‌افزاری برای نقاشی استفاده کند
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
 
