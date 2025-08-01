@@ -24,9 +24,9 @@ class MainActivity : AppCompatActivity() {
     // UI
     private lateinit var etText: TextInputEditText
     private lateinit var spinnerFont: Spinner
-    private lateinit var btnTextColor: Button
-    private lateinit var btnBgColor: Button
-    private lateinit var btnTransparentBg: Button
+    private lateinit var btnTextColor: ImageButton
+    private lateinit var btnBgColor: ImageButton
+    private lateinit var btnTransparentBg: ImageButton
     private lateinit var imagePreview: ImageView
     private lateinit var btnSaveImage: Button
     private lateinit var seekFontSize: SeekBar
@@ -129,22 +129,21 @@ class MainActivity : AppCompatActivity() {
         val start = etText.selectionStart
         val end = etText.selectionEnd
 
-        // اگر متنی انتخاب نشده، کاری انجام نده (برای جلوگیری از رنگ شدن کل متن به اشتباه)
-        if (start == end) {
-            Toast.makeText(this, "لطفاً بخشی از متن را برای تغییر رنگ انتخاب کنید", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         val newText = SpannableStringBuilder(etText.text)
-        newText.getSpans(start, end, ForegroundColorSpan::class.java).forEach {
+        val targetStart = if (start == end) 0 else start
+        val targetEnd = if (start == end) newText.length else end
+
+        if (targetStart >= targetEnd && newText.isNotEmpty()) return
+
+        newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
-        newText.setSpan(ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         isProgrammaticTextChange = true
+        val selectionEnd = etText.selectionEnd
         etText.text = newText
-        // بازگرداندن انتخاب کاربر پس از تغییر متن
-        etText.setSelection(start, end)
+        etText.setSelection(selectionEnd)
         isProgrammaticTextChange = false
 
         renderTextImage(newText)
@@ -174,7 +173,10 @@ class MainActivity : AppCompatActivity() {
             try {
                 typeface = Typeface.createFromAsset(context.assets, currentFontPath)
             } catch (e: Exception) {}
-            setTextColor(Color.BLACK)
+            
+            // *** خطای کلیدی اینجا بود و حذف شد ***
+            // setTextColor(Color.BLACK) << این خط باعث میشد همه رنگها نادیده گرفته شوند
+            
             gravity = android.view.Gravity.CENTER
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
