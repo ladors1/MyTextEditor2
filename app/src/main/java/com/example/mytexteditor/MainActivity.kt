@@ -13,6 +13,7 @@ import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import android.view.View
+import com.google.android.material.textfield.TextInputEditText
 import com.skydoves.colorpickerview.ColorEnvelope
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import com.skydoves.colorpickerview.ColorPickerDialog
@@ -21,7 +22,7 @@ import java.io.IOException
 class MainActivity : AppCompatActivity() {
 
     // UI
-    private lateinit var etText: EditText
+    private lateinit var etText: TextInputEditText
     private lateinit var spinnerFont: Spinner
     private lateinit var btnTextColor: Button
     private lateinit var btnBgColor: Button
@@ -38,7 +39,6 @@ class MainActivity : AppCompatActivity() {
     private var currentFontPath = ""
     private var fontList: Map<String, String> = mapOf()
     private var isProgrammaticTextChange = false
-    private var activeColor = Color.BLACK // رنگ فعال برای کل متن
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
         setupFonts()
         setupListeners()
 
-        renderTextImage()
+        renderTextImage(etText.text)
     }
 
     private fun bindViews() {
@@ -79,12 +79,12 @@ class MainActivity : AppCompatActivity() {
         spinnerFont.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
                 currentFontPath = fontList[parent.getItemAtPosition(pos) as String].orEmpty()
-                renderTextImage()
+                renderTextImage(etText.text)
             }
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
         etText.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) { if (!isProgrammaticTextChange) renderTextImage() }
+            override fun afterTextChanged(s: Editable?) { if (!isProgrammaticTextChange) renderTextImage(s) }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
@@ -93,14 +93,15 @@ class MainActivity : AppCompatActivity() {
         seekFontSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) {
                 fontSizeInSp = if (p > 0) p.toFloat() else 1f
-                tvFontSize.text = "اندازه فونت: $p"; renderTextImage()
+                tvFontSize.text = "اندازه فونت: $p"
+                renderTextImage(etText.text)
             }
             override fun onStartTrackingTouch(s: SeekBar?) {}
             override fun onStopTrackingTouch(s: SeekBar?) {}
         })
         btnTextColor.setOnClickListener { openColorPicker(true) }
         btnBgColor.setOnClickListener { openColorPicker(false) }
-        btnTransparentBg.setOnClickListener { isTransparentBg = !isTransparentBg; renderTextImage() }
+        btnTransparentBg.setOnClickListener { isTransparentBg = !isTransparentBg; renderTextImage(etText.text) }
         btnSaveImage.setOnClickListener { saveImage() }
     }
 
@@ -111,77 +112,82 @@ class MainActivity : AppCompatActivity() {
                 ColorEnvelopeListener { envelope, _ ->
                     val opaqueColor = (envelope.color and 0x00FFFFFF) or (0xFF000000).toInt()
                     if (isText) {
-                        activeColor = opaqueColor
-                        renderTextImage()
+                        applyColorToSelection(opaqueColor)
                     } else {
                         bgColor = opaqueColor
-                        renderTextImage()
+                        renderTextImage(etText.text)
                     }
                 })
             .setNegativeButton("انصراف") { dialog, _ -> dialog.dismiss() }
             .show()
     }
 
-    // *** روش جدید: دیگر از Spannable استفاده نمی‌کنیم، چون موتور رندر با آن مشکل دارد ***
-    // ما فقط یک رنگ اصلی (activeColor) را نگه می‌داریم و متن را با آن رنگ می‌کنیم.
-    private fun renderTextImage() {
-        val textToRender = etText.text.toString()
+    private fun applyColorToSelection(color: Int) {
+        val start = etText.selectionStart
+        val end = etText.selectionEnd
+
+        val newText = SpannableStringBuilder(etText.text)
+        val targetStart = if (start == end) 0 else start
+        val targetEnd = if (start == end) newText.length else end
+
+        if (targetStart >= targetEnd) return
+
+        newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
+            newText.removeSpan(it)
+        }
+        newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        isProgrammaticTextChange = true
+        etText.text = newText
+        etText.setSelection(end)
+        isProgrammaticTextChange = false
+
+        renderTextImage(newText)
+    }
+
+    private fun renderTextImage(textToRender: CharSequence?) {
         val width = 1080
         val height = 1920
         val safeZone = 80f
 
-        val finalBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val finalCanvas = Canvas(finalBitmap)
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
 
         if (isTransparentBg) {
-            finalCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         } else {
-            finalCanvas.drawColor(bgColor)
+            canvas.drawColor(bgColor)
         }
 
-        if (textToRender.isEmpty()) {
-            imagePreview.setImageBitmap(finalBitmap)
-            return
+        if (textToRender.isNullOrEmpty()) {
+            imagePreview.setImageBitmap(bmp); return
         }
 
-        // 1. یک بوم موقت فقط برای کشیدن ماسک سیاه متن ایجاد می‌کنیم
-        val textMaskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ALPHA_8)
-        val textCanvas = Canvas(textMaskBitmap)
-
-        // 2. متن را با رنگ سیاه خالص روی این بوم موقت می‌کشیم
-        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, fontSizeInSp, resources.displayMetrics)
-            textAlign = Paint.Align.CENTER
+        val textView = TextView(this).apply {
+            text = textToRender
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeInSp)
             try {
-                typeface = Typeface.createFromAsset(assets, currentFontPath)
+                typeface = Typeface.createFromAsset(context.assets, currentFontPath)
             } catch (e: Exception) {}
+            setTextColor(Color.BLACK)
+            gravity = android.view.Gravity.CENTER
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
 
-        // رسم خط به خط برای پشتیبانی از متن چندخطی
-        val textLines = textToRender.split('\n')
-        val textHeight = textPaint.descent() - textPaint.ascent()
-        val totalTextHeight = textHeight * textLines.size
-        var yPos = (height - totalTextHeight) / 2f - textPaint.ascent()
+        val widthSpec = View.MeasureSpec.makeMeasureSpec((width - 2 * safeZone).toInt(), View.MeasureSpec.AT_MOST)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST)
+        textView.measure(widthSpec, heightSpec)
+        textView.layout(0, 0, textView.measuredWidth, textView.measuredHeight)
 
-        for (line in textLines) {
-            textCanvas.drawText(line, width / 2f, yPos, textPaint)
-            yPos += textHeight
-        }
+        canvas.save()
+        val xPos = (width - textView.measuredWidth) / 2f
+        val yPos = (height - textView.measuredHeight) / 2f
+        canvas.translate(xPos, yPos)
+        textView.draw(canvas)
+        canvas.restore()
 
-        // 3. یک قلم‌مو (Paint) با رنگ دلخواه خود می‌سازیم
-        val colorPaint = Paint().apply {
-            color = activeColor
-            // 4. حالت ترکیب را روی SRC_IN تنظیم می‌کنیم
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-        }
-
-        // 5. روی بوم نهایی، ابتدا ماسک سیاه را می‌کشیم، سپس آن را با رنگ خود پر می‌کنیم
-        finalCanvas.drawBitmap(textMaskBitmap, 0f, 0f, colorPaint)
-
-        imagePreview.setImageBitmap(finalBitmap)
+        imagePreview.setImageBitmap(bmp)
     }
-
 
     private fun getFontList(context: Context): Map<String, String> {
         return try {
@@ -207,17 +213,13 @@ class MainActivity : AppCompatActivity() {
         }
         try {
             contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)?.let { uri ->
-                contentResolver.openOutputStream(uri)?.use { it.write(bmp.toByteArray()) }
+                contentResolver.openOutputStream(uri)?.use { stream ->
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                }
                 Toast.makeText(this, "تصویر با موفقیت ذخیره شد!", Toast.LENGTH_LONG).show()
             }
         } catch (e: IOException) {
             Toast.makeText(this, "خطا در ذخیره تصویر: ${e.message}", Toast.LENGTH_LONG).show()
         }
-    }
-
-    private fun Bitmap.toByteArray(): ByteArray {
-        val stream = java.io.ByteArrayOutputStream()
-        this.compress(Bitmap.CompressFormat.PNG, 100, stream)
-        return stream.toByteArray()
     }
 }
