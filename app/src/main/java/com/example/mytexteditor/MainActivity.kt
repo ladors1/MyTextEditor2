@@ -8,7 +8,6 @@ import android.text.*
 import android.text.style.ForegroundColorSpan
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import android.graphics.drawable.BitmapDrawable
 import android.view.View
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
@@ -113,7 +112,6 @@ class MainActivity : AppCompatActivity() {
         return validFonts
     }
 
-    // استفاده از ColorPickerDialog مدرن
     fun openColorPicker(isText: Boolean) {
         ColorPickerDialog.Builder(this)
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
@@ -131,19 +129,28 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // این تابع هم رنگ بخشی از متن انتخابی را عوض می‌کند هم اگر چیزی انتخاب نشد کل متن را رنگی می‌کند
+    // 🔥 این کد جدید و تضمینی تغییر رنگ متن انتخاب شده یا کل متن 🔥
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
+        val spannable = etText.text as Spannable
+
         if (start < end) {
-            val spannable = etText.text as Spannable
+            // پاک‌کردن هر span رنگ قبلی از بازه
+            val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
+            for (span in spans) {
+                spannable.removeSpan(span)
+            }
             spannable.setSpan(
                 ForegroundColorSpan(color),
                 start,
                 end,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
+            // این خط باعث میشه تغییر رنگ فوراً نمایش داده بشه:
+            etText.text = spannable
         } else {
+            // اگر متنی انتخاب نیست، کل متن رنگی شود
             etText.setTextColor(color)
             textColor = color
             renderTextImage()
@@ -170,7 +177,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "مشکل در لود فونت (${currentFont}): ${e.message}", Toast.LENGTH_SHORT).show()
         }
 
-        // در حالت فعلی، رنگ کل متن فقط ذخیره می‌شود (برای اسپن رندر حرفه‌ای بگو کدش رو کامل بنویسم)
+        // رنگ کل متن فقط (نه spanها) در عکس لحاظ می‌شود
         paint.color = textColor
         val text = etText.text.toString()
         val textLines = text.split("\n")
