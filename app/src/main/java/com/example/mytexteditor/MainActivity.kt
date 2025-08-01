@@ -113,38 +113,39 @@ class MainActivity : AppCompatActivity() {
         return validFonts
     }
 
-    // ColorPickerView دایره‌ای حرفه‌ای!
+    // استفاده از ColorPickerDialog مدرن
     fun openColorPicker(isText: Boolean) {
         ColorPickerDialog.Builder(this)
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
-            .setPreferenceName("MyColorPicker")
+            .setPreferenceName("ColorPickerDialog")
             .setPositiveButton("تأیید",
                 ColorEnvelopeListener { envelope, _ ->
-                    val color = envelope.color
                     if (isText) {
-                        applyColorToSelection(color)
+                        applyColorToSelection(envelope.color)
                     } else {
-                        bgColor = color
+                        bgColor = envelope.color
                         renderTextImage()
                     }
                 })
             .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
-            .attachAlphaSlideBar(true)
-            .attachBrightnessSlideBar(true)
             .show()
     }
 
+    // این تابع هم رنگ بخشی از متن انتخابی را عوض می‌کند هم اگر چیزی انتخاب نشد کل متن را رنگی می‌کند
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         if (start < end) {
             val spannable = etText.text as Spannable
-            val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
-            for (span in spans) spannable.removeSpan(span)
-            spannable.setSpan(ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(
+                ForegroundColorSpan(color),
+                start,
+                end,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         } else {
-            textColor = color
             etText.setTextColor(color)
+            textColor = color
             renderTextImage()
         }
     }
@@ -169,6 +170,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "مشکل در لود فونت (${currentFont}): ${e.message}", Toast.LENGTH_SHORT).show()
         }
 
+        // در حالت فعلی، رنگ کل متن فقط ذخیره می‌شود (برای اسپن رندر حرفه‌ای بگو کدش رو کامل بنویسم)
         paint.color = textColor
         val text = etText.text.toString()
         val textLines = text.split("\n")
