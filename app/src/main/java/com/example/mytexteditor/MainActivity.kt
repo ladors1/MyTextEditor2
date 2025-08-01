@@ -14,6 +14,10 @@ import android.widget.SeekBar.OnSeekBarChangeListener
 import com.skydoves.colorpickerview.ColorEnvelope
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import com.skydoves.colorpickerview.ColorPickerDialog
+import android.text.TextUtils
+import android.view.Gravity
+import androidx.core.text.TextUtilsCompat
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -74,6 +78,10 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
+        // تنظیم راست‌چین برای EditText (فقط برای زبان‌های RTL مثل فارسی)
+        etText.textDirection = View.TEXT_DIRECTION_RTL
+        etText.gravity = Gravity.RIGHT or Gravity.TOP
+
         seekFontSize.progress = fontSize.toInt()
         tvFontSize.text = "اندازه فونت: ${fontSize.toInt()}"
 
@@ -129,7 +137,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ✅ تغییر رنگ بخش انتخابی یا کل متن (EditText)
+    // تغییر رنگ بخشی یا کل متن
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
@@ -147,22 +155,20 @@ class MainActivity : AppCompatActivity() {
                 end,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
-            // نیاز به setText نیست. همین کافی است
         } else {
             // اگر انتخاب نداره، کل متن رنگی بشه
             etText.setTextColor(color)
             textColor = color
-            // برای یکنواختی، تمام spanهای رنگی پاک شه:
+            // تمام spanهای رنگی پاک شه:
             val allSpans = spannable.getSpans(0, spannable.length, ForegroundColorSpan::class.java)
             for (span in allSpans) {
                 spannable.removeSpan(span)
             }
-            renderTextImage()
         }
         renderTextImage()
     }
 
-    // ✔️ رندر عکس با رعایت رنگ spanها (تک تک کاراکترها)
+    // رندر تصویر با پشتیبانی کامل از فارسی و span رنگی (حتی اگر کلمات وسط جمله رنگی باشند)
     fun renderTextImage() {
         val width = 1080
         val height = 1920
@@ -173,7 +179,7 @@ class MainActivity : AppCompatActivity() {
         val paint = Paint()
         paint.textSize = fontSize * 2.5f
         paint.isAntiAlias = true
-        paint.textAlign = Paint.Align.LEFT // حالا چپ چین. اگر وسط می‌خواهی، Paint.Align.CENTER بذار و مختصات رو تغییر بده.
+        paint.textAlign = Paint.Align.RIGHT // چون فارسی هست
 
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
@@ -190,26 +196,30 @@ class MainActivity : AppCompatActivity() {
         var charOffset = 0
 
         for (line in lines) {
-            var x = width / 2f
-            // برای center-align:
-            paint.textAlign = Paint.Align.CENTER
-            x = width / 2f
-            // حالا هر کاراکتر رو با span رنگ مناسب چاپ کن
+            // اگر خط خالی بود، پرش کن
+            if (line.isEmpty()) {
+                y += fontSize * 2.5f
+                charOffset += 1
+                continue
+            }
+            // برای راست‌چین دقیق (محاسبه انتهای خط)
+            val lineWidth = paint.measureText(line)
+            val x = width - (width - lineWidth) / 2f // انتهای خط وسط تصویر
+
+            // حالا تک‌تک کاراکترها رو با span مربوطه بکش
             var i = 0
             while (i < line.length) {
                 val c = line[i]
-                // رنگ پیشفرض span یا کل
                 var charColor = textColor
                 val spans = (text as Spannable).getSpans(charOffset + i, charOffset + i + 1, ForegroundColorSpan::class.java)
                 if (spans.isNotEmpty()) {
-                    charColor = spans[0].foregroundColor
+                    // برای چند span، اولویت با آخرین span هست
+                    charColor = spans[spans.size - 1].foregroundColor
                 }
                 paint.color = charColor
-                // اندازه و موقعیت کاراکتر فعلی
-                val charWidth = paint.measureText(c.toString())
-                // چون center-align هست، باید کل طول خط رو محاسبه کنی:
-                val lineWidth = paint.measureText(line)
-                val charX = x - lineWidth / 2f + paint.measureText(line.substring(0, i))
+                // کاراکتر را از راست به چپ بکش
+                val prefix = line.substring(0, i)
+                val charX = x - paint.measureText(line.substring(i)) // از انتهای خط به عقب
                 canvas.drawText(c.toString(), charX, y, paint)
                 i++
             }
