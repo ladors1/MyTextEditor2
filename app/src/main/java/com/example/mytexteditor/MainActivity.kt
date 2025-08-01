@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         setupFonts()
         setupListeners()
         
-        val initialFontSizeSp = 26f
+        val initialFontSizeSp = 42f // اندازه فونت بزرگتر برای شروع
         seekFontSize.progress = initialFontSizeSp.toInt()
         updateFontSize(initialFontSizeSp)
 
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupFonts() {
         fontList = getFontList(this)
         if (fontList.isEmpty()) {
-            Toast.makeText(this, "هیچ فونت سالمی پیدا نشد!", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "هیچ فونتی پیدا نشد!", Toast.LENGTH_LONG).show()
             finish(); return
         }
         val fontNames = fontList.keys.toList()
@@ -121,6 +121,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
             .setPositiveButton("تأیید",
                 ColorEnvelopeListener { envelope, _ ->
+                    // رنگ انتخاب شده را کاملا مات (Opaque) میکنیم
                     val opaqueColor = (envelope.color and 0x00FFFFFF) or (0xFF000000).toInt()
                     if (isText) {
                         applyColorToSelection(opaqueColor)
@@ -136,7 +137,6 @@ class MainActivity : AppCompatActivity() {
     private fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
-
         val newText = SpannableStringBuilder(etText.text)
         
         val targetStart = if (start == end) 0 else start
@@ -144,9 +144,11 @@ class MainActivity : AppCompatActivity() {
 
         if (targetStart >= targetEnd && newText.isNotEmpty()) return
 
+        // تمام رنگ‌های قبلی در محدوده انتخاب شده را پاک کن
         newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
+        // رنگ جدید را اعمال کن
         newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         isProgrammaticTextChange = true
@@ -160,16 +162,18 @@ class MainActivity : AppCompatActivity() {
 
         renderTextImage(newText)
     }
-    
+
+    // *** روش نهایی و صحیح برای رندر متن با استایل‌های مختلف (Spannable) ***
     private fun renderTextImage(textToRender: CharSequence?) {
-        // *** تغییر اصلی اینجاست: ابعاد به 1920x1080 تغییر کرد ***
+        // ابعاد خروجی را مطابق درخواست شما تنظیم کردیم
         val width = 1920
         val height = 1080
-        val safeZone = 80f
+        val safeZone = 100f // حاشیه امن برای زیبایی بیشتر
 
         val finalBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val finalCanvas = Canvas(finalBitmap)
 
+        // تنظیم پس‌زمینه
         if (isTransparentBg) {
             finalCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         } else {
@@ -181,36 +185,39 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // آماده‌سازی قلم (Paint) برای رندر
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
+            color = Color.BLACK // رنگ پیش‌فرض برای قسمت‌هایی که رنگ ندارند
             textSize = fontSizeInPx
             try {
                 typeface = Typeface.createFromAsset(assets, currentFontPath)
             } catch (e: Exception) {
-                // Font loading failed
+                // اگر فونت سفارشی بارگذاری نشد، از فونت پیش‌فرض استفاده می‌شود
             }
         }
 
+        // استفاده از StaticLayout: این کلاس جادویی اندروید برای ما همه‌چیز را مدیریت می‌کند.
+        // خودش Spannable را می‌فهمد، رنگ‌ها را تشخیص می‌دهد و متن را به درستی می‌کشد.
         val layoutWidth = (width - 2 * safeZone).toInt()
         
         val staticLayout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             StaticLayout.Builder.obtain(textToRender, 0, textToRender.length, textPaint, layoutWidth)
-                .setAlignment(Layout.Alignment.ALIGN_CENTER)
-                .setLineSpacing(0f, 1.0f)
-                .setIncludePad(true)
+                .setAlignment(Layout.Alignment.ALIGN_CENTER) // چینش متن در وسط
                 .build()
         } else {
             @Suppress("DEPRECATION")
             StaticLayout(textToRender, textPaint, layoutWidth, Layout.Alignment.ALIGN_CENTER, 1.0f, 0f, true)
         }
 
+        // محاسبه موقعیت برای قرار دادن متن در مرکز عمودی و افقی تصویر
         val textHeight = staticLayout.height.toFloat()
         val textX = (width.toFloat() - staticLayout.width) / 2f
         val textY = (height - textHeight) / 2f
 
+        // کشیدن متن روی بوم نهایی
         finalCanvas.save()
-        finalCanvas.translate(textX, textY)
-        staticLayout.draw(finalCanvas)
+        finalCanvas.translate(textX, textY) // بوم را به نقطه شروع متن منتقل کن
+        staticLayout.draw(finalCanvas)     // کل متن را با تمام استایل‌ها رسم کن
         finalCanvas.restore()
 
         imagePreview.setImageBitmap(finalBitmap)
