@@ -10,15 +10,14 @@ import android.provider.MediaStore
 import android.text.*
 import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
-import android.view.View
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
-import com.skydoves.colorpickerview.ColorEnvelope
-import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import com.skydoves.colorpickerview.ColorPickerDialog
+import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
@@ -50,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         bindViews()
         setupFonts()
         setupListeners()
-        // مقدار اولیه seekbar را تنظیم کن
+        
         val initialFontSizeSp = 26f
         seekFontSize.progress = initialFontSizeSp.toInt()
         updateFontSize(initialFontSizeSp)
@@ -161,10 +160,10 @@ class MainActivity : AppCompatActivity() {
 
         renderTextImage(newText)
     }
-
-    // *** روش جدید و تضمینی رندر با تکنیک شابلون لایه‌لایه ***
+    
     private fun renderTextImage(textToRender: CharSequence?) {
-        val width = 1080
+        // *** تغییر اصلی اینجاست: ابعاد به 1920x1080 تغییر کرد ***
+        val width = 1920
         val height = 1080
         val safeZone = 80f
 
@@ -178,70 +177,44 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (textToRender.isNullOrEmpty()) {
-            imagePreview.setImageBitmap(finalBitmap); return
+            imagePreview.setImageBitmap(finalBitmap)
+            return
         }
 
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
             textSize = fontSizeInPx
-            textAlign = Paint.Align.CENTER
             try {
                 typeface = Typeface.createFromAsset(assets, currentFontPath)
-            } catch (e: Exception) {}
-        }
-
-        // متن را به خطوط تقسیم کن
-        val textLines = textToRender.toString().split('\n')
-        val textHeight = textPaint.descent() - textPaint.ascent()
-        val totalTextHeight = textHeight * textLines.size
-        var currentY = (height - totalTextHeight) / 2f - textPaint.ascent()
-
-        if (textToRender is Spannable) {
-            var charIndex = 0
-            for (line in textLines) {
-                // برای هر رنگ در خط، یک لایه جدا بساز
-                val spans = textToRender.getSpans(charIndex, charIndex + line.length, ForegroundColorSpan::class.java)
-                
-                // 1. ابتدا کل خط را با رنگ پیش‌فرض (سیاه) بکش
-                val lineBitmap = drawTextToBitmap(line, textPaint, width, textHeight.toInt(), Color.BLACK)
-                finalCanvas.drawBitmap(lineBitmap, width / 2f - lineBitmap.width / 2f, currentY - textHeight, null)
-
-                // 2. حالا برای هر رنگ، یک لایه جدید بساز و روی لایه قبلی بکش
-                for (span in spans) {
-                    val spanStart = textToRender.getSpanStart(span) - charIndex
-                    val spanEnd = textToRender.getSpanEnd(span) - charIndex
-                    if(spanStart < 0 || spanEnd > line.length) continue
-
-                    val coloredSubstring = line.substring(spanStart, spanEnd)
-                    val coloredBitmap = drawTextToBitmap(coloredSubstring, textPaint, width, textHeight.toInt(), span.foregroundColor)
-                    
-                    val precedingText = line.substring(0, spanStart)
-                    val xOffset = textPaint.measureText(precedingText)
-
-                    finalCanvas.drawBitmap(coloredBitmap, (width / 2f - textPaint.measureText(line)/2f) + xOffset , currentY - textHeight, null)
-                }
-                charIndex += line.length + 1
-                currentY += textHeight
+            } catch (e: Exception) {
+                // Font loading failed
             }
         }
+
+        val layoutWidth = (width - 2 * safeZone).toInt()
+        
+        val staticLayout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            StaticLayout.Builder.obtain(textToRender, 0, textToRender.length, textPaint, layoutWidth)
+                .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                .setLineSpacing(0f, 1.0f)
+                .setIncludePad(true)
+                .build()
+        } else {
+            @Suppress("DEPRECATION")
+            StaticLayout(textToRender, textPaint, layoutWidth, Layout.Alignment.ALIGN_CENTER, 1.0f, 0f, true)
+        }
+
+        val textHeight = staticLayout.height.toFloat()
+        val textX = (width.toFloat() - staticLayout.width) / 2f
+        val textY = (height - textHeight) / 2f
+
+        finalCanvas.save()
+        finalCanvas.translate(textX, textY)
+        staticLayout.draw(finalCanvas)
+        finalCanvas.restore()
+
         imagePreview.setImageBitmap(finalBitmap)
     }
-
-    private fun drawTextToBitmap(text: String, paint: TextPaint, canvasWidth: Int, canvasHeight: Int, color: Int): Bitmap {
-        val textWidth = paint.measureText(text)
-        val bitmap = Bitmap.createBitmap(textWidth.toInt().coerceAtLeast(1), canvasHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-
-        val textMaskPaint = TextPaint(paint).apply { this.color = Color.BLACK }
-        canvas.drawText(text, textWidth/2, canvasHeight/2f - ((paint.descent() + paint.ascent()) / 2f), textMaskPaint)
-
-        val colorPaint = Paint().apply {
-            this.color = color
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-        }
-        canvas.drawPaint(colorPaint)
-        return bitmap
-    }
-
 
     private fun getFontList(context: Context): Map<String, String> {
         return try {
