@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
     // وضعیت
     private var bgColor = Color.WHITE
     private var isTransparentBg = false
-    private var fontSizeInSp = 26f
+    private var fontSizeInPx = 0f
     private var currentFontPath = ""
     private var fontList: Map<String, String> = mapOf()
     private var isProgrammaticTextChange = false
@@ -50,7 +50,17 @@ class MainActivity : AppCompatActivity() {
         bindViews()
         setupFonts()
         setupListeners()
+        // مقدار اولیه seekbar را تنظیم کن
+        val initialFontSizeSp = 26f
+        seekFontSize.progress = initialFontSizeSp.toInt()
+        updateFontSize(initialFontSizeSp)
 
+        renderTextImage(etText.text)
+    }
+    
+    private fun updateFontSize(sp: Float) {
+        fontSizeInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, resources.displayMetrics)
+        tvFontSize.text = "اندازه فونت: ${sp.toInt()}"
         renderTextImage(etText.text)
     }
 
@@ -91,13 +101,9 @@ class MainActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
-        seekFontSize.progress = fontSizeInSp.toInt()
-        tvFontSize.text = "اندازه فونت: ${fontSizeInSp.toInt()}"
         seekFontSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) {
-                fontSizeInSp = if (p > 0) p.toFloat() else 1f
-                tvFontSize.text = "اندازه فونت: $p"
-                renderTextImage(etText.text)
+                updateFontSize(if (p > 0) p.toFloat() else 1f)
             }
             override fun onStartTrackingTouch(s: SeekBar?) {}
             override fun onStopTrackingTouch(s: SeekBar?) {}
@@ -116,7 +122,6 @@ class MainActivity : AppCompatActivity() {
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
             .setPositiveButton("تأیید",
                 ColorEnvelopeListener { envelope, _ ->
-                    // *** کلید نهایی: پاکسازی رنگ برای جلوگیری از سیاه/سفید شدن ***
                     val opaqueColor = (envelope.color and 0x00FFFFFF) or (0xFF000000).toInt()
                     if (isText) {
                         applyColorToSelection(opaqueColor)
@@ -157,50 +162,86 @@ class MainActivity : AppCompatActivity() {
         renderTextImage(newText)
     }
 
+    // *** روش جدید و تضمینی رندر با تکنیک شابلون لایه‌لایه ***
     private fun renderTextImage(textToRender: CharSequence?) {
         val width = 1080
         val height = 1080
         val safeZone = 80f
 
-        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
+        val finalBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val finalCanvas = Canvas(finalBitmap)
 
         if (isTransparentBg) {
-            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+            finalCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         } else {
-            canvas.drawColor(bgColor)
+            finalCanvas.drawColor(bgColor)
         }
 
         if (textToRender.isNullOrEmpty()) {
-            imagePreview.setImageBitmap(bmp); return
+            imagePreview.setImageBitmap(finalBitmap); return
         }
 
-        val textView = TextView(this).apply {
-            text = textToRender
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeInSp)
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = fontSizeInPx
+            textAlign = Paint.Align.CENTER
             try {
-                typeface = Typeface.createFromAsset(context.assets, currentFontPath)
+                typeface = Typeface.createFromAsset(assets, currentFontPath)
             } catch (e: Exception) {}
-            // *** مهمترین تغییر اینجا بود: این خط حذف شد تا رنگ‌های Span نادیده گرفته نشوند ***
-            gravity = android.view.Gravity.CENTER
-            // *** کلید دوم: این خط باگ رندرینگ گرافیکی را دور می‌زند ***
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
 
-        val widthSpec = View.MeasureSpec.makeMeasureSpec((width - 2 * safeZone).toInt(), View.MeasureSpec.AT_MOST)
-        val heightSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST)
-        textView.measure(widthSpec, heightSpec)
-        textView.layout(0, 0, textView.measuredWidth, textView.measuredHeight)
+        // متن را به خطوط تقسیم کن
+        val textLines = textToRender.toString().split('\n')
+        val textHeight = textPaint.descent() - textPaint.ascent()
+        val totalTextHeight = textHeight * textLines.size
+        var currentY = (height - totalTextHeight) / 2f - textPaint.ascent()
 
-        canvas.save()
-        val xPos = (width - textView.measuredWidth) / 2f
-        val yPos = (height - textView.measuredHeight) / 2f
-        canvas.translate(xPos, yPos)
-        textView.draw(canvas)
-        canvas.restore()
+        if (textToRender is Spannable) {
+            var charIndex = 0
+            for (line in textLines) {
+                // برای هر رنگ در خط، یک لایه جدا بساز
+                val spans = textToRender.getSpans(charIndex, charIndex + line.length, ForegroundColorSpan::class.java)
+                
+                // 1. ابتدا کل خط را با رنگ پیش‌فرض (سیاه) بکش
+                val lineBitmap = drawTextToBitmap(line, textPaint, width, textHeight.toInt(), Color.BLACK)
+                finalCanvas.drawBitmap(lineBitmap, width / 2f - lineBitmap.width / 2f, currentY - textHeight, null)
 
-        imagePreview.setImageBitmap(bmp)
+                // 2. حالا برای هر رنگ، یک لایه جدید بساز و روی لایه قبلی بکش
+                for (span in spans) {
+                    val spanStart = textToRender.getSpanStart(span) - charIndex
+                    val spanEnd = textToRender.getSpanEnd(span) - charIndex
+                    if(spanStart < 0 || spanEnd > line.length) continue
+
+                    val coloredSubstring = line.substring(spanStart, spanEnd)
+                    val coloredBitmap = drawTextToBitmap(coloredSubstring, textPaint, width, textHeight.toInt(), span.foregroundColor)
+                    
+                    val precedingText = line.substring(0, spanStart)
+                    val xOffset = textPaint.measureText(precedingText)
+
+                    finalCanvas.drawBitmap(coloredBitmap, (width / 2f - textPaint.measureText(line)/2f) + xOffset , currentY - textHeight, null)
+                }
+                charIndex += line.length + 1
+                currentY += textHeight
+            }
+        }
+        imagePreview.setImageBitmap(finalBitmap)
     }
+
+    private fun drawTextToBitmap(text: String, paint: TextPaint, canvasWidth: Int, canvasHeight: Int, color: Int): Bitmap {
+        val textWidth = paint.measureText(text)
+        val bitmap = Bitmap.createBitmap(textWidth.toInt().coerceAtLeast(1), canvasHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        val textMaskPaint = TextPaint(paint).apply { this.color = Color.BLACK }
+        canvas.drawText(text, textWidth/2, canvasHeight/2f - ((paint.descent() + paint.ascent()) / 2f), textMaskPaint)
+
+        val colorPaint = Paint().apply {
+            this.color = color
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        }
+        canvas.drawPaint(colorPaint)
+        return bitmap
+    }
+
 
     private fun getFontList(context: Context): Map<String, String> {
         return try {
