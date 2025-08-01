@@ -12,7 +12,9 @@ import android.graphics.drawable.BitmapDrawable
 import android.view.View
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
-import yuku.ambilwarna.AmbilWarnaDialog   // <-- فقط همین ایمپورت جدید!
+import com.skydoves.colorpickerview.ColorEnvelope
+import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
+import com.skydoves.colorpickerview.ColorPickerDialog
 
 class MainActivity : AppCompatActivity() {
 
@@ -38,20 +40,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        try {
-            etText = findViewById(R.id.etText)
-            spinnerFont = findViewById(R.id.spinnerFont)
-            btnTextColor = findViewById(R.id.btnTextColor)
-            btnBgColor = findViewById(R.id.btnBgColor)
-            btnTransparentBg = findViewById(R.id.btnTransparentBg)
-            imagePreview = findViewById(R.id.imagePreview)
-            btnSaveImage = findViewById(R.id.btnSaveImage)
-            seekFontSize = findViewById(R.id.seekFontSize)
-            tvFontSize = findViewById(R.id.tvFontSize)
-        } catch (e: Exception) {
-            Toast.makeText(this, "مشکل در پیدا کردن ویوها: ${e.message}", Toast.LENGTH_LONG).show()
-            return
-        }
+        etText = findViewById(R.id.etText)
+        spinnerFont = findViewById(R.id.spinnerFont)
+        btnTextColor = findViewById(R.id.btnTextColor)
+        btnBgColor = findViewById(R.id.btnBgColor)
+        btnTransparentBg = findViewById(R.id.btnTransparentBg)
+        imagePreview = findViewById(R.id.imagePreview)
+        btnSaveImage = findViewById(R.id.btnSaveImage)
+        seekFontSize = findViewById(R.id.seekFontSize)
+        tvFontSize = findViewById(R.id.tvFontSize)
 
         fontList = getFontList(this)
         if (fontList.isEmpty()) {
@@ -102,7 +99,6 @@ class MainActivity : AppCompatActivity() {
         renderTextImage()
     }
 
-    // فقط فونت‌هایی که واقعا سالم هستن به لیست اضافه میشن (وگرنه توست خطا نشون میده)
     fun getFontList(context: Context): List<String> {
         val allFonts = context.assets.list("fonts")?.filter { it.endsWith(".ttf") || it.endsWith(".otf") } ?: listOf()
         val validFonts = mutableListOf<String>()
@@ -117,33 +113,38 @@ class MainActivity : AppCompatActivity() {
         return validFonts
     }
 
-    // استفاده از AmbilWarna برای ColorPicker
+    // ColorPickerView دایره‌ای حرفه‌ای!
     fun openColorPicker(isText: Boolean) {
-        val initialColor = if (isText) textColor else bgColor
-        AmbilWarnaDialog(this, initialColor, object : AmbilWarnaDialog.OnAmbilWarnaListener {
-            override fun onOk(dialog: AmbilWarnaDialog?, color: Int) {
-                if (isText) {
-                    applyColorToSelection(color)
-                } else {
-                    bgColor = color
-                    renderTextImage()
-                }
-            }
-            override fun onCancel(dialog: AmbilWarnaDialog?) {}
-        }).show()
+        ColorPickerDialog.Builder(this)
+            .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
+            .setPreferenceName("MyColorPicker")
+            .setPositiveButton("تأیید",
+                ColorEnvelopeListener { envelope, _ ->
+                    val color = envelope.color
+                    if (isText) {
+                        applyColorToSelection(color)
+                    } else {
+                        bgColor = color
+                        renderTextImage()
+                    }
+                })
+            .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
+            .attachAlphaSlideBar(true)
+            .attachBrightnessSlideBar(true)
+            .show()
     }
 
-    // رنگی کردن هر قسمت انتخابی از متن با Spannable
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         if (start < end) {
             val spannable = etText.text as Spannable
-            val span = ForegroundColorSpan(color)
-            spannable.setSpan(span, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
+            for (span in spans) spannable.removeSpan(span)
+            spannable.setSpan(ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         } else {
-            // اگر متنی انتخاب نشده بود رنگ کل متن عوض میشه
             textColor = color
+            etText.setTextColor(color)
             renderTextImage()
         }
     }
