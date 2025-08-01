@@ -129,20 +129,22 @@ class MainActivity : AppCompatActivity() {
         val start = etText.selectionStart
         val end = etText.selectionEnd
 
+        // اگر متنی انتخاب نشده، کاری انجام نده (برای جلوگیری از رنگ شدن کل متن به اشتباه)
+        if (start == end) {
+            Toast.makeText(this, "لطفاً بخشی از متن را برای تغییر رنگ انتخاب کنید", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val newText = SpannableStringBuilder(etText.text)
-        val targetStart = if (start == end) 0 else start
-        val targetEnd = if (start == end) newText.length else end
-
-        if (targetStart >= targetEnd) return
-
-        newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
+        newText.getSpans(start, end, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
-        newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        newText.setSpan(ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         isProgrammaticTextChange = true
         etText.text = newText
-        etText.setSelection(end)
+        // بازگرداندن انتخاب کاربر پس از تغییر متن
+        etText.setSelection(start, end)
         isProgrammaticTextChange = false
 
         renderTextImage(newText)
@@ -150,7 +152,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderTextImage(textToRender: CharSequence?) {
         val width = 1080
-        val height = 1080 // استفاده از ابعاد مربعی برای پیش‌نمایش بهتر
+        val height = 1080
         val safeZone = 80f
 
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
