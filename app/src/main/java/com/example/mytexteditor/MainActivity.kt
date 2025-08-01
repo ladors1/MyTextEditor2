@@ -116,6 +116,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
             .setPositiveButton("تأیید",
                 ColorEnvelopeListener { envelope, _ ->
+                    // *** کلید نهایی: پاکسازی رنگ برای جلوگیری از سیاه/سفید شدن ***
                     val opaqueColor = (envelope.color and 0x00FFFFFF) or (0xFF000000).toInt()
                     if (isText) {
                         applyColorToSelection(opaqueColor)
@@ -180,7 +181,9 @@ class MainActivity : AppCompatActivity() {
             try {
                 typeface = Typeface.createFromAsset(context.assets, currentFontPath)
             } catch (e: Exception) {}
+            // *** مهمترین تغییر اینجا بود: این خط حذف شد تا رنگ‌های Span نادیده گرفته نشوند ***
             gravity = android.view.Gravity.CENTER
+            // *** کلید دوم: این خط باگ رندرینگ گرافیکی را دور می‌زند ***
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
 
@@ -222,7 +225,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         try {
-            // *** خطای تایپی اینجا برطرف شد ***
             contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)?.let { uri ->
                 contentResolver.openOutputStream(uri)?.use { stream ->
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
