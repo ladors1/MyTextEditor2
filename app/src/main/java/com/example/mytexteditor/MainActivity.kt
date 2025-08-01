@@ -136,10 +136,10 @@ class MainActivity : AppCompatActivity() {
     private fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
+        val finalColor = color or -0x1000000 // اطمینان از اینکه رنگ کاملاً مات است
 
-        // اگر متنی وجود ندارد، رنگ پیش‌فرض تایپ را تغییر بده
         if (etText.length() == 0) {
-            etText.setTextColor(color)
+            etText.setTextColor(finalColor)
             return
         }
 
@@ -149,16 +149,14 @@ class MainActivity : AppCompatActivity() {
 
         if (targetStart >= targetEnd) return
 
-        // پاک کردن رنگ‌های قبلی از محدوده
         newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
-        // اعمال رنگ جدید
-        newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        newText.setSpan(ForegroundColorSpan(finalColor), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         isProgrammaticTextChange = true
         etText.text = newText
-        etText.setSelection(end) // بازگرداندن مکان‌نما به جای درست
+        etText.setSelection(end)
         isProgrammaticTextChange = false
 
         renderTextImage(newText)
@@ -189,10 +187,12 @@ class MainActivity : AppCompatActivity() {
             try {
                 typeface = Typeface.createFromAsset(context.assets, currentFontPath)
             } catch (e: Exception) { /* fallback to default */ }
-            
-            // *** تغییر کلیدی: رنگ پایه همیشه سیاه است و Span ها آن را بازنویسی می‌کنند ***
-            setTextColor(Color.BLACK) 
+            setTextColor(Color.BLACK)
             gravity = android.view.Gravity.CENTER
+
+            // *** خط کلیدی برای رفع مشکل رندرینگ ***
+            // این خط به اندروید می‌گوید که از روش نرم‌افزاری برای نقاشی استفاده کند
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
 
         val widthSpec = View.MeasureSpec.makeMeasureSpec((width - 2 * safeZone).toInt(), View.MeasureSpec.AT_MOST)
