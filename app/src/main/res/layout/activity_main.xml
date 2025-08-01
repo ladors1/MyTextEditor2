@@ -11,7 +11,6 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- EditText متن (راست‌چین و فارسی) -->
         <EditText
             android:id="@+id/etText"
             android:layout_width="match_parent"
@@ -29,14 +28,12 @@
             android:overScrollMode="always"
             android:layout_marginBottom="16dp" />
 
-        <!-- انتخاب فونت -->
         <Spinner
             android:id="@+id/spinnerFont"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp" />
 
-        <!-- انتخاب رنگ متن و پس‌زمینه -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,7 +64,6 @@
                 android:text="پس‌زمینه شفاف" />
         </LinearLayout>
 
-        <!-- سایز فونت -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -92,7 +88,6 @@
                 android:layout_marginEnd="6dp"/>
         </LinearLayout>
 
-        <!-- پیش‌نمایش عکس متن -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="340dp"
@@ -107,12 +102,13 @@
                 android:adjustViewBounds="true"/>
         </FrameLayout>
 
-        <!-- دکمه ذخیره تصویر -->
         <Button
             android:id="@+id/btnSaveImage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="ذخیره تصویر" />
+            android:text="ذخیره تصویر"
+            android:layout_marginBottom="40dp" />
+            <!-- فاصله پایین زیاد تا دکمه تو SafeZone قرار بگیره -->
 
     </LinearLayout>
 </ScrollView>
