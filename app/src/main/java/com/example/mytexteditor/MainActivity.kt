@@ -128,92 +128,96 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
             .show()
     }
-
-    // حل مشکل رنگ برای متن انتخابی یا کل متن (در ادیت و عکس)
+    
+    // **اصلاح شده**
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         val spannable = etText.text as Spannable
 
-        if (start < end) {
-            val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
-            for (span in spans) spannable.removeSpan(span)
-            spannable.setSpan(ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        } else {
-            val allSpans = spannable.getSpans(0, spannable.length, ForegroundColorSpan::class.java)
-            for (span in allSpans) spannable.removeSpan(span)
-            etText.setTextColor(color)
-            textColor = color
+        // اگر هیچ متنی انتخاب نشده بود، کل متن را رنگی کن
+        val selectionStart = if (start == end) 0 else start
+        val selectionEnd = if (start == end) etText.length() else end
+
+        // حذف رنگ‌های قبلی در محدوده انتخابی
+        val oldSpans = spannable.getSpans(selectionStart, selectionEnd, ForegroundColorSpan::class.java)
+        for (span in oldSpans) {
+            spannable.removeSpan(span)
         }
+
+        // اعمال رنگ جدید
+        spannable.setSpan(ForegroundColorSpan(color), selectionStart, selectionEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        
+        // اگر هیچ متنی انتخاب نشده بود، رنگ پیش‌فرض متن را نیز به‌روز کن
+        if (start == end) {
+            textColor = color
+            etText.setTextColor(color) // برای نمایش صحیح در EditText
+        }
+
         renderTextImage()
     }
 
-    // حل معکوس شدن متن فارسی و رعایت SafeZone
+    // **اصلاح شده و بهینه‌سازی شده با StaticLayout**
     fun renderTextImage() {
         val width = 1080
         val height = 1920
-        val safeZone = 80f // فاصله از پایین و لبه‌ها
+        val safeZone = 80f
+
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        if (!isTransparentBg) canvas.drawColor(bgColor)
-        val paint = Paint()
-        paint.textSize = fontSize * 2.5f
-        paint.isAntiAlias = true
-        paint.textAlign = Paint.Align.RIGHT
 
+        if (!isTransparentBg) {
+            canvas.drawColor(bgColor)
+        }
+
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
+        textPaint.color = textColor // رنگ پیش‌فرض
+        textPaint.textSize = fontSize * 2.5f
+        
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
-            paint.typeface = tf
+            textPaint.typeface = tf
         } catch (_: Exception) {
-            paint.typeface = Typeface.DEFAULT
+            textPaint.typeface = Typeface.DEFAULT
         }
+        
+        val text: Spanned = etText.text
 
-        val text = etText.text
-        val textLines = text.split("\n")
-        val yStart = (height - ((textLines.size - 1) * fontSize * 2.5f)) / 2f
-        var charOffset = 0
-        for ((i, line) in textLines.withIndex()) {
-            val x = width - safeZone
-            var useSpan = false
-            for (j in 0 until line.length) {
-                val spans = (text as Spannable).getSpans(charOffset + j, charOffset + j + 1, ForegroundColorSpan::class.java)
-                if (spans.isNotEmpty()) { useSpan = true; break }
-            }
-            if (useSpan) {
-                // برای هر کاراکتر span جداگانه بکش
-                var j = 0
-                while (j < line.length) {
-                    var charColor = textColor
-                    val spans = (text as Spannable).getSpans(charOffset + j, charOffset + j + 1, ForegroundColorSpan::class.java)
-                    if (spans.isNotEmpty()) charColor = spans.last().foregroundColor
-                    paint.color = charColor
-                    val charX = x - paint.measureText(line.substring(j))
-                    canvas.drawText(line[j].toString(), charX, yStart + i * fontSize * 2.5f, paint)
-                    j++
-                }
-            } else {
-                // خط کاملاً تک‌رنگ: سریع‌تر و تمیزتر
-                paint.color = textColor
-                canvas.drawText(line, x, yStart + i * fontSize * 2.5f, paint)
-            }
-            charOffset += line.length + 1
-        }
+        // استفاده از StaticLayout برای مدیریت خودکار خطوط و چینش
+        val textLayout = StaticLayout.Builder.obtain(text, 0, text.length, textPaint, width - (safeZone * 2).toInt())
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1.0f)
+            .setIncludePad(true)
+            .build()
+        
+        // محاسبه موقعیت برای قرارگیری در مرکز عمودی
+        val textHeight = textLayout.height
+        val yStart = (height - textHeight) / 2f
+
+        canvas.save()
+        // جابجایی canvas به موقعیت درست برای رسم
+        canvas.translate(safeZone, yStart)
+        textLayout.draw(canvas)
+        canvas.restore()
+
         imagePreview.setImageBitmap(bmp)
     }
 
+
     fun saveImage() {
         try {
-            val bmp = Bitmap.createBitmap(
-                imagePreview.width, imagePreview.height, Bitmap.Config.ARGB_8888
-            )
-            val canvas = Canvas(bmp)
-            imagePreview.draw(canvas)
+            // برای اطمینان از کیفیت، از خود بیت‌مپ رندر شده استفاده کنید
+            imagePreview.isDrawingCacheEnabled = true
+            val bmp = imagePreview.drawingCache
+            
             MediaStore.Images.Media.insertImage(
                 contentResolver, bmp, "TextImage", "متن ذخیره شده"
             )
             Toast.makeText(this, "تصویر ذخیره شد و قابل استفاده برای استوری یا استیکر!", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Toast.makeText(this, "خطا در ذخیره تصویر: ${e.message}", Toast.LENGTH_LONG).show()
+        } finally {
+            imagePreview.isDrawingCacheEnabled = false
         }
     }
 }
