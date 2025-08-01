@@ -1,88 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurfaceContainerLowest"
+    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
-    <!-- نوار ابزار ثابت در پایین صفحه -->
-    <LinearLayout
-        android:id="@+id/bottom_toolbar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="8dp"
-        android:background="?attr/colorSurfaceContainer"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:elevation="4dp">
-
-        <LinearLayout
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:layout_height="?attr/actionBarSize"
+            app:title="ویرایشگر متن حرفه‌ای" />
+    </com.google.android.material.appbar.AppBarLayout>
 
-            <ImageButton
-                android:id="@+id/btnTextColor"
-                style="@style/Widget.AppCompat.Button.Borderless"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="رنگ متن"
-                app:srcCompat="@android:drawable/ic_menu_edit"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <ImageButton
-                android:id="@+id/btnBgColor"
-                style="@style/Widget.AppCompat.Button.Borderless"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="رنگ پس‌زمینه"
-                app:srcCompat="@android:drawable/ic_menu_gallery"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <ImageButton
-                android:id="@+id/btnTransparentBg"
-                style="@style/Widget.AppCompat.Button.Borderless"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="پس‌زمینه شفاف"
-                app:srcCompat="@android:drawable/ic_menu_view"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <Button
-                android:id="@+id/btnSaveImage"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ذخیره"
-                app:icon="@android:drawable/ic_menu_save" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- محتوای اصلی که قابل اسکرول است -->
-    <ScrollView
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:fillViewport="true"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottom_toolbar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
-
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -94,10 +39,9 @@
                     android:layout_height="300dp"
                     android:scaleType="fitCenter"
                     android:padding="8dp"
-                    android:background="?attr/colorSurfaceContainerHigh"
+                    android:background="?attr/colorSurfaceContainer"
                     android:contentDescription="پیش‌نمایش تصویر" />
             </com.google.android.material.card.MaterialCardView>
-
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
@@ -111,7 +55,6 @@
                     android:gravity="top"
                     android:minLines="4" />
             </com.google.android.material.textfield.TextInputLayout>
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -143,5 +86,52 @@
                 android:max="100"
                 android:min="10"/>
         </LinearLayout>
-    </ScrollView>
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.bottomappbar.BottomAppBar
+        android:id="@+id/bottom_app_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:fabAlignmentMode="end"
+        app:hideOnScroll="false">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:paddingEnd="16dp">
+            <ImageButton
+                android:id="@+id/btnTextColor"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="رنگ متن"
+                app:srcCompat="@android:drawable/ic_menu_edit"
+                app:tint="?attr/colorOnSurfaceVariant"/>
+            <ImageButton
+                android:id="@+id/btnBgColor"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="رنگ پس‌زمینه"
+                app:srcCompat="@android:drawable/ic_menu_gallery"
+                app:tint="?attr/colorOnSurfaceVariant"/>
+            <ImageButton
+                android:id="@+id/btnTransparentBg"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="پس‌زمینه شفاف"
+                app:srcCompat="@android:drawable/ic_menu_view"
+                app:tint="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
+    </com.google.android.material.bottomappbar.BottomAppBar>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnSaveImage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="ذخیره تصویر"
+        app:srcCompat="@android:drawable/ic_menu_save"
+        app:layout_anchor="@id/bottom_app_bar" />
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
