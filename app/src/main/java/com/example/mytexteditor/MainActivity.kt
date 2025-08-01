@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var tvFontSize: TextView
 
     // متغیرهای وضعیت
-    var textColor = Color.BLACK // رنگ پیش‌فرض
+    var textColor = Color.BLACK
     var bgColor = Color.WHITE
     var isTransparentBg = false
     var fontSize = 26f
@@ -55,23 +55,17 @@ class MainActivity : AppCompatActivity() {
         seekFontSize = findViewById(R.id.seekFontSize)
         tvFontSize = findViewById(R.id.tvFontSize)
 
-        // لیسنر برای تغییرات متن که فقط پیش‌نمایش را آپدیت می‌کند
+        // لیسنر برای تغییرات متن
         etText.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) { renderTextImage() }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // بارگذاری فونت‌ها
+        // راه‌اندازی بخش‌های مختلف برنامه
         setupFonts()
-
-        // تنظیم اسپینر فونت
         setupFontSpinner()
-
-        // تنظیم SeekBar برای اندازه فونت
         setupFontSizeSeeker()
-
-        // تنظیم دکمه‌ها
         setupButtons()
 
         // رندر اولیه
@@ -141,7 +135,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
     
-    // *** روش نهایی و مستقیم برای اعمال رنگ ***
     private fun applyColorToSelection(color: Int) {
         val editable = etText.editableText
         val start = etText.selectionStart
@@ -152,64 +145,61 @@ class MainActivity : AppCompatActivity() {
 
         if (targetStart >= targetEnd) return
 
-        // حذف رنگ‌های قبلی از محدوده
         val oldSpans = editable.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java)
         for (span in oldSpans) {
             editable.removeSpan(span)
         }
-
-        // اعمال رنگ جدید
         editable.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
 
-
+    // *** روش جدید و تضمینی رندر با استفاده از یک TextView نامرئی ***
     private fun renderTextImage() {
         val width = 1080
         val height = 1920
         val safeZone = 80f
 
+        // 1. ساخت بوم نقاشی
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
 
+        // 2. تنظیم پس‌زمینه
         if (isTransparentBg) {
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         } else {
             canvas.drawColor(bgColor)
         }
         
-        // متن را از EditText دریافت می‌کنیم
-        val textToRender: Spanned = etText.text
-
-        // *** مرحله اشکال‌زدایی: بررسی تعداد رنگ‌های موجود در متن ***
-        val spans = textToRender.getSpans(0, textToRender.length, ForegroundColorSpan::class.java)
-        Toast.makeText(this, "Rendering with ${spans.size} color spans", Toast.LENGTH_SHORT).show()
+        // 3. ساخت یک TextView نامرئی در حافظه
+        val textView = TextView(this)
+        textView.text = etText.text // اعمال متن رنگی شده
+        textView.setTextColor(this.textColor) // تنظیم رنگ پیش‌فرض
         
-        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
-        textPaint.color = this.textColor // رنگ پیش‌فرض برای بخش‌های بدون رنگ خاص
-        textPaint.textSize = fontSize * 2.5f
-
+        // تنظیم فونت
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
-            textPaint.typeface = tf
-        } catch (_: Exception) {
-            textPaint.typeface = Typeface.DEFAULT
+            textView.typeface = tf
+        } catch (_: Exception) { 
+            textView.typeface = Typeface.DEFAULT
         }
         
-        // StaticLayout خودش تمام Spanها را برای رنگ‌آمیزی متن تشخیص می‌دهد
-        val textLayout = StaticLayout.Builder.obtain(textToRender, 0, textToRender.length, textPaint, width - (safeZone * 2).toInt())
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1.0f)
-            .setIncludePad(true)
-            .build()
+        // تنظیم اندازه فونت. (ممکن است لازم باشد این ضریب را کمی تغییر دهید)
+        textView.textSize = fontSize * 1.2f 
+        
+        // 4. اندازه‌گیری TextView برای فهمیدن ابعاد آن
+        val widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(width - (safeZone * 2).toInt(), View.MeasureSpec.AT_MOST)
+        val heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST)
+        textView.measure(widthMeasureSpec, heightMeasureSpec)
+        textView.layout(0, 0, textView.measuredWidth, textView.measuredHeight)
 
-        val textHeight = textLayout.height
-        val yStart = (height - textHeight) / 2f
-
+        // 5. قرار دادن TextView در وسط بوم و نقاشی کردن آن
         canvas.save()
-        canvas.translate(safeZone, yStart)
-        textLayout.draw(canvas)
+        val textX = (width - textView.measuredWidth) / 2f
+        val textY = (height - textView.measuredHeight) / 2f
+        canvas.translate(textX, textY)
+        textView.draw(canvas)
         canvas.restore()
 
+        // 6. نمایش نتیجه نهایی
         imagePreview.setImageBitmap(bmp)
     }
 
