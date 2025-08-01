@@ -38,19 +38,16 @@ class MainActivity : AppCompatActivity() {
     private var currentFontPath = ""
     private var fontList: Map<String, String> = mapOf()
     private var isProgrammaticTextChange = false
+    private var baseTextColor = Color.BLACK
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // اتصال UI
         bindViews()
-
-        // راه‌اندازی برنامه
         setupFonts()
         setupListeners()
 
-        // رندر اولیه
         renderTextImage(etText.text)
     }
 
@@ -105,7 +102,7 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 fontSizeInSp = if (progress > 0) progress.toFloat() else 1f
                 tvFontSize.text = "اندازه فونت: $progress"
-                etText.textSize = fontSizeInSp // تغییر اندازه فونت در ادیتور
+                etText.textSize = fontSizeInSp
                 renderTextImage(etText.text)
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -121,17 +118,19 @@ class MainActivity : AppCompatActivity() {
         btnSaveImage.setOnClickListener { saveImage() }
     }
 
+    // *** این بخش برای رفع خطای کامپایل اصلاح شد ***
     private fun openColorPicker(isText: Boolean) {
         ColorPickerDialog.Builder(this)
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
-            .setPositiveButton("تأیید") { _, envelope: ColorEnvelope ->
-                if (isText) {
-                    applyColorToSelection(envelope.color)
-                } else {
-                    bgColor = envelope.color
-                    renderTextImage(etText.text)
-                }
-            }
+            .setPositiveButton("تأیید",
+                ColorEnvelopeListener { envelope, _ ->
+                    if (isText) {
+                        applyColorToSelection(envelope.color)
+                    } else {
+                        bgColor = envelope.color
+                        renderTextImage(etText.text)
+                    }
+                })
             .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
             .show()
     }
@@ -144,25 +143,33 @@ class MainActivity : AppCompatActivity() {
         val targetStart = if (start == end) 0 else start
         val targetEnd = if (start == end) newText.length else end
 
-        if (targetStart >= targetEnd) return
-
+        if (targetStart >= targetEnd && newText.isNotEmpty()) return
+        
+        if (newText.isEmpty()) {
+            baseTextColor = color
+            etText.setTextColor(color)
+            return
+        }
+        
         // پاک کردن رنگ‌های قبلی
         newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
         // اعمال رنگ جدید
         newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        
+        if (start == end) {
+            baseTextColor = color
+        }
 
         isProgrammaticTextChange = true
         etText.text = newText
         etText.setSelection(end)
         isProgrammaticTextChange = false
 
-        // فراخوانی مستقیم رندر با متن جدید برای اطمینان
         renderTextImage(newText)
     }
 
-    // *** قلب تپنده برنامه: رندر کردن با یک TextView واقعی اما نامرئی ***
     private fun renderTextImage(textToRender: CharSequence?) {
         val width = 1080
         val height = 1920
@@ -171,43 +178,34 @@ class MainActivity : AppCompatActivity() {
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
 
-        // رسم پس‌زمینه
         if (isTransparentBg) {
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         } else {
             canvas.drawColor(bgColor)
         }
 
-        // اگر متنی برای رندر وجود ندارد، خارج شو
         if (textToRender.isNullOrEmpty()) {
             imagePreview.setImageBitmap(bmp)
             return
         }
 
-        // ساخت یک TextView در حافظه برای رندر دقیق
         val textView = TextView(this).apply {
-            // اعمال متن رنگی شده
             text = textToRender
-            // اعمال اندازه فونت
             setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeInSp)
-            // اعمال فونت سفارشی
             try {
                 typeface = Typeface.createFromAsset(context.assets, currentFontPath)
             } catch (e: Exception) {
-                // در صورت مشکل، از فونت پیش‌فرض استفاده کن
+                // fallback to default
             }
-            // تنظیمات دیگر
-            setTextColor(Color.BLACK) // رنگ پایه (Spanها روی این رنگ می‌نشینند)
+            setTextColor(baseTextColor)
             gravity = android.view.Gravity.CENTER
         }
 
-        // اندازه‌گیری TextView
         val widthSpec = View.MeasureSpec.makeMeasureSpec((width - 2 * safeZone).toInt(), View.MeasureSpec.AT_MOST)
         val heightSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST)
         textView.measure(widthSpec, heightSpec)
         textView.layout(0, 0, textView.measuredWidth, textView.measuredHeight)
 
-        // قرار دادن TextView در مرکز بوم و نقاشی کردن آن
         canvas.save()
         val xPos = (width - textView.measuredWidth) / 2f
         val yPos = (height - textView.measuredHeight) / 2f
@@ -215,7 +213,6 @@ class MainActivity : AppCompatActivity() {
         textView.draw(canvas)
         canvas.restore()
 
-        // نمایش نتیجه در ImageView
         imagePreview.setImageBitmap(bmp)
     }
 
@@ -224,8 +221,8 @@ class MainActivity : AppCompatActivity() {
             val fontPaths = context.assets.list("fonts")
                 ?.filter { it.endsWith(".ttf", true) || it.endsWith(".otf", true) } ?: emptyList()
             fontPaths.associateBy(
-                keySelector = { it.substringBeforeLast('.') }, // نام فایل بدون پسوند
-                valueTransform = { "fonts/$it" } // مسیر کامل در assets
+                keySelector = { it.substringBeforeLast('.') },
+                valueTransform = { "fonts/$it" }
             )
         } catch (e: IOException) {
             emptyMap()
