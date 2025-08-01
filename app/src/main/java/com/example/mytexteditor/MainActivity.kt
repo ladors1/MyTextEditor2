@@ -101,7 +101,10 @@ class MainActivity : AppCompatActivity() {
         })
         btnTextColor.setOnClickListener { openColorPicker(true) }
         btnBgColor.setOnClickListener { openColorPicker(false) }
-        btnTransparentBg.setOnClickListener { isTransparentBg = !isTransparentBg; renderTextImage(etText.text) }
+        btnTransparentBg.setOnClickListener {
+            isTransparentBg = !isTransparentBg
+            renderTextImage(etText.text)
+        }
         btnSaveImage.setOnClickListener { saveImage() }
     }
 
@@ -147,7 +150,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderTextImage(textToRender: CharSequence?) {
         val width = 1080
-        val height = 1920
+        val height = 1080 // استفاده از ابعاد مربعی برای پیش‌نمایش بهتر
         val safeZone = 80f
 
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
