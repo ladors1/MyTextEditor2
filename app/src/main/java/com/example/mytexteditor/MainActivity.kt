@@ -9,11 +9,10 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.text.*
 import android.text.style.ForegroundColorSpan
+import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import android.view.View
-import android.widget.SeekBar
-import android.widget.SeekBar.OnSeekBarChangeListener
 import com.skydoves.colorpickerview.ColorEnvelope
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import com.skydoves.colorpickerview.ColorPickerDialog
@@ -21,30 +20,41 @@ import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
 
-    // تعریف متغیرهای UI
-    lateinit var etText: EditText
-    lateinit var spinnerFont: Spinner
-    lateinit var btnTextColor: Button
-    lateinit var btnBgColor: Button
-    lateinit var btnTransparentBg: Button
-    lateinit var imagePreview: ImageView
-    lateinit var btnSaveImage: Button
-    lateinit var seekFontSize: SeekBar
-    lateinit var tvFontSize: TextView
+    // UI
+    private lateinit var etText: EditText
+    private lateinit var spinnerFont: Spinner
+    private lateinit var btnTextColor: Button
+    private lateinit var btnBgColor: Button
+    private lateinit var btnTransparentBg: Button
+    private lateinit var imagePreview: ImageView
+    private lateinit var btnSaveImage: Button
+    private lateinit var seekFontSize: SeekBar
+    private lateinit var tvFontSize: TextView
 
-    // متغیرهای وضعیت
-    var textColor = Color.BLACK
-    var bgColor = Color.WHITE
-    var isTransparentBg = false
-    var fontSize = 26f
-    lateinit var fontList: List<String>
-    var currentFont = ""
+    // وضعیت
+    private var bgColor = Color.WHITE
+    private var isTransparentBg = false
+    private var fontSizeInSp = 26f
+    private var currentFontPath = ""
+    private var fontList: Map<String, String> = mapOf()
+    private var isProgrammaticTextChange = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // اتصال متغیرها به UI
+        // اتصال UI
+        bindViews()
+
+        // راه‌اندازی برنامه
+        setupFonts()
+        setupListeners()
+
+        // رندر اولیه
+        renderTextImage(etText.text)
+    }
+
+    private fun bindViews() {
         etText = findViewById(R.id.etText)
         spinnerFont = findViewById(R.id.spinnerFont)
         btnTextColor = findViewById(R.id.btnTextColor)
@@ -54,22 +64,6 @@ class MainActivity : AppCompatActivity() {
         btnSaveImage = findViewById(R.id.btnSaveImage)
         seekFontSize = findViewById(R.id.seekFontSize)
         tvFontSize = findViewById(R.id.tvFontSize)
-
-        // لیسنر برای تغییرات متن
-        etText.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) { renderTextImage() }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
-
-        // راه‌اندازی بخش‌های مختلف برنامه
-        setupFonts()
-        setupFontSpinner()
-        setupFontSizeSeeker()
-        setupButtons()
-
-        // رندر اولیه
-        renderTextImage()
     }
 
     private fun setupFonts() {
@@ -79,42 +73,50 @@ class MainActivity : AppCompatActivity() {
             finish()
             return
         }
-        currentFont = fontList[0]
-    }
-
-    private fun setupFontSpinner() {
-        val fontNames = fontList.map { it.substringBefore(".") }
+        val fontNames = fontList.keys.toList()
+        currentFontPath = fontList[fontNames[0]].orEmpty()
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, fontNames)
         spinnerFont.adapter = adapter
+    }
+
+    private fun setupListeners() {
         spinnerFont.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                currentFont = fontList[position]
-                renderTextImage()
+                val selectedFontName = parent.getItemAtPosition(position) as String
+                currentFontPath = fontList[selectedFontName].orEmpty()
+                renderTextImage(etText.text)
             }
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
-    }
 
-    private fun setupFontSizeSeeker() {
-        seekFontSize.progress = fontSize.toInt()
-        tvFontSize.text = "اندازه فونت: ${fontSize.toInt()}"
-        seekFontSize.setOnSeekBarChangeListener(object: OnSeekBarChangeListener{
+        etText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (!isProgrammaticTextChange) {
+                    renderTextImage(s)
+                }
+            }
+        })
+
+        seekFontSize.progress = fontSizeInSp.toInt()
+        tvFontSize.text = "اندازه فونت: ${fontSizeInSp.toInt()}"
+        seekFontSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                fontSize = if (progress > 0) progress.toFloat() else 1f
+                fontSizeInSp = if (progress > 0) progress.toFloat() else 1f
                 tvFontSize.text = "اندازه فونت: $progress"
-                renderTextImage()
+                etText.textSize = fontSizeInSp // تغییر اندازه فونت در ادیتور
+                renderTextImage(etText.text)
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-    }
 
-    private fun setupButtons() {
-        btnTextColor.setOnClickListener { openColorPicker(isText = true) }
-        btnBgColor.setOnClickListener { openColorPicker(isText = false) }
+        btnTextColor.setOnClickListener { openColorPicker(true) }
+        btnBgColor.setOnClickListener { openColorPicker(false) }
         btnTransparentBg.setOnClickListener {
             isTransparentBg = !isTransparentBg
-            renderTextImage()
+            renderTextImage(etText.text)
         }
         btnSaveImage.setOnClickListener { saveImage() }
     }
@@ -122,107 +124,116 @@ class MainActivity : AppCompatActivity() {
     private fun openColorPicker(isText: Boolean) {
         ColorPickerDialog.Builder(this)
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
-            .setPositiveButton("تأیید",
-                ColorEnvelopeListener { envelope, _ ->
-                    if (isText) {
-                        applyColorToSelection(envelope.color)
-                    } else {
-                        bgColor = envelope.color
-                        renderTextImage()
-                    }
-                })
+            .setPositiveButton("تأیید") { _, envelope: ColorEnvelope ->
+                if (isText) {
+                    applyColorToSelection(envelope.color)
+                } else {
+                    bgColor = envelope.color
+                    renderTextImage(etText.text)
+                }
+            }
             .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
             .show()
     }
-    
+
     private fun applyColorToSelection(color: Int) {
-        val editable = etText.editableText
         val start = etText.selectionStart
         val end = etText.selectionEnd
 
+        val newText = SpannableStringBuilder(etText.text)
         val targetStart = if (start == end) 0 else start
-        val targetEnd = if (start == end) editable.length else end
+        val targetEnd = if (start == end) newText.length else end
 
         if (targetStart >= targetEnd) return
 
-        val oldSpans = editable.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java)
-        for (span in oldSpans) {
-            editable.removeSpan(span)
+        // پاک کردن رنگ‌های قبلی
+        newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
+            newText.removeSpan(it)
         }
-        editable.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        // اعمال رنگ جدید
+        newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        isProgrammaticTextChange = true
+        etText.text = newText
+        etText.setSelection(end)
+        isProgrammaticTextChange = false
+
+        // فراخوانی مستقیم رندر با متن جدید برای اطمینان
+        renderTextImage(newText)
     }
 
-    // *** روش جدید و تضمینی رندر با استفاده از یک TextView نامرئی ***
-    private fun renderTextImage() {
+    // *** قلب تپنده برنامه: رندر کردن با یک TextView واقعی اما نامرئی ***
+    private fun renderTextImage(textToRender: CharSequence?) {
         val width = 1080
         val height = 1920
         val safeZone = 80f
 
-        // 1. ساخت بوم نقاشی
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
 
-        // 2. تنظیم پس‌زمینه
+        // رسم پس‌زمینه
         if (isTransparentBg) {
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         } else {
             canvas.drawColor(bgColor)
         }
-        
-        // 3. ساخت یک TextView نامرئی در حافظه
-        val textView = TextView(this)
-        textView.text = etText.text // اعمال متن رنگی شده
-        textView.setTextColor(this.textColor) // تنظیم رنگ پیش‌فرض
-        
-        // تنظیم فونت
-        try {
-            val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
-            textView.typeface = tf
-        } catch (_: Exception) { 
-            textView.typeface = Typeface.DEFAULT
-        }
-        
-        // تنظیم اندازه فونت. (ممکن است لازم باشد این ضریب را کمی تغییر دهید)
-        textView.textSize = fontSize * 1.2f 
-        
-        // 4. اندازه‌گیری TextView برای فهمیدن ابعاد آن
-        val widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(width - (safeZone * 2).toInt(), View.MeasureSpec.AT_MOST)
-        val heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST)
-        textView.measure(widthMeasureSpec, heightMeasureSpec)
-        textView.layout(0, 0, textView.measuredWidth, textView.measuredHeight)
 
-        // 5. قرار دادن TextView در وسط بوم و نقاشی کردن آن
-        canvas.save()
-        val textX = (width - textView.measuredWidth) / 2f
-        val textY = (height - textView.measuredHeight) / 2f
-        canvas.translate(textX, textY)
-        textView.draw(canvas)
-        canvas.restore()
-
-        // 6. نمایش نتیجه نهایی
-        imagePreview.setImageBitmap(bmp)
-    }
-
-    private fun getFontList(context: Context): List<String> {
-        return try {
-            context.assets.list("fonts")
-                ?.filter { it.endsWith(".ttf", true) || it.endsWith(".otf", true) }
-                ?.filter {
-                    try { Typeface.createFromAsset(context.assets, "fonts/$it"); true }
-                    catch (e: Exception) { false }
-                } ?: listOf()
-        } catch (e: IOException) {
-            listOf()
-        }
-    }
-    
-    private fun saveImage() {
-        val drawable = imagePreview.drawable as? BitmapDrawable
-        if (drawable == null) {
-            Toast.makeText(this, "خطا: تصویر برای ذخیره آماده نیست.", Toast.LENGTH_SHORT).show()
+        // اگر متنی برای رندر وجود ندارد، خارج شو
+        if (textToRender.isNullOrEmpty()) {
+            imagePreview.setImageBitmap(bmp)
             return
         }
 
+        // ساخت یک TextView در حافظه برای رندر دقیق
+        val textView = TextView(this).apply {
+            // اعمال متن رنگی شده
+            text = textToRender
+            // اعمال اندازه فونت
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeInSp)
+            // اعمال فونت سفارشی
+            try {
+                typeface = Typeface.createFromAsset(context.assets, currentFontPath)
+            } catch (e: Exception) {
+                // در صورت مشکل، از فونت پیش‌فرض استفاده کن
+            }
+            // تنظیمات دیگر
+            setTextColor(Color.BLACK) // رنگ پایه (Spanها روی این رنگ می‌نشینند)
+            gravity = android.view.Gravity.CENTER
+        }
+
+        // اندازه‌گیری TextView
+        val widthSpec = View.MeasureSpec.makeMeasureSpec((width - 2 * safeZone).toInt(), View.MeasureSpec.AT_MOST)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST)
+        textView.measure(widthSpec, heightSpec)
+        textView.layout(0, 0, textView.measuredWidth, textView.measuredHeight)
+
+        // قرار دادن TextView در مرکز بوم و نقاشی کردن آن
+        canvas.save()
+        val xPos = (width - textView.measuredWidth) / 2f
+        val yPos = (height - textView.measuredHeight) / 2f
+        canvas.translate(xPos, yPos)
+        textView.draw(canvas)
+        canvas.restore()
+
+        // نمایش نتیجه در ImageView
+        imagePreview.setImageBitmap(bmp)
+    }
+
+    private fun getFontList(context: Context): Map<String, String> {
+        return try {
+            val fontPaths = context.assets.list("fonts")
+                ?.filter { it.endsWith(".ttf", true) || it.endsWith(".otf", true) } ?: emptyList()
+            fontPaths.associateBy(
+                keySelector = { it.substringBeforeLast('.') }, // نام فایل بدون پسوند
+                valueTransform = { "fonts/$it" } // مسیر کامل در assets
+            )
+        } catch (e: IOException) {
+            emptyMap()
+        }
+    }
+
+    private fun saveImage() {
+        val drawable = imagePreview.drawable as? BitmapDrawable ?: return
         val bmp = drawable.bitmap
         val filename = "TextImage_${System.currentTimeMillis()}.png"
         val contentValues = ContentValues().apply {
@@ -232,20 +243,15 @@ class MainActivity : AppCompatActivity() {
                 put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/MyTextEditor")
             }
         }
-
-        val resolver = contentResolver
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
         try {
-            uri?.let {
-                resolver.openOutputStream(it)?.use { stream ->
+            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)?.let { uri ->
+                contentResolver.openOutputStream(uri)?.use { stream ->
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
                 }
-                Toast.makeText(this, "تصویر با موفقیت در گالری ذخیره شد!", Toast.LENGTH_LONG).show()
-            } ?: throw IOException("خطا در ایجاد فایل در گالری")
-        } catch (e: Exception) {
+                Toast.makeText(this, "تصویر با موفقیت ذخیره شد!", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: IOException) {
             Toast.makeText(this, "خطا در ذخیره تصویر: ${e.message}", Toast.LENGTH_LONG).show()
-            uri?.let { resolver.delete(it, null, null) }
         }
     }
 }
