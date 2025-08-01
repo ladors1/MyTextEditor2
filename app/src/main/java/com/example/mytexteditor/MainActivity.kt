@@ -148,7 +148,7 @@ class MainActivity : AppCompatActivity() {
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
             // این خط باعث میشه تغییر رنگ فوراً نمایش داده بشه:
-            etText.text = spannable
+            etText.text = Editable.Factory.getInstance().newEditable(spannable)
         } else {
             // اگر متنی انتخاب نیست، کل متن رنگی شود
             etText.setTextColor(color)
