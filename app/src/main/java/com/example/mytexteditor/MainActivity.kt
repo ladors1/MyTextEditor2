@@ -129,14 +129,14 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // 🔥 این کد جدید و تضمینی تغییر رنگ متن انتخاب شده یا کل متن 🔥
+    // ✅ تغییر رنگ بخش انتخابی یا کل متن (EditText)
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         val spannable = etText.text as Spannable
 
         if (start < end) {
-            // پاک‌کردن هر span رنگ قبلی از بازه
+            // حذف spanهای قبلی فقط در بازه انتخاب شده
             val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
             for (span in spans) {
                 spannable.removeSpan(span)
@@ -147,16 +147,22 @@ class MainActivity : AppCompatActivity() {
                 end,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
-            // این خط باعث میشه تغییر رنگ فوراً نمایش داده بشه:
-            etText.text = Editable.Factory.getInstance().newEditable(spannable)
+            // نیاز به setText نیست. همین کافی است
         } else {
-            // اگر متنی انتخاب نیست، کل متن رنگی شود
+            // اگر انتخاب نداره، کل متن رنگی بشه
             etText.setTextColor(color)
             textColor = color
+            // برای یکنواختی، تمام spanهای رنگی پاک شه:
+            val allSpans = spannable.getSpans(0, spannable.length, ForegroundColorSpan::class.java)
+            for (span in allSpans) {
+                spannable.removeSpan(span)
+            }
             renderTextImage()
         }
+        renderTextImage()
     }
 
+    // ✔️ رندر عکس با رعایت رنگ spanها (تک تک کاراکترها)
     fun renderTextImage() {
         val width = 1080
         val height = 1920
@@ -167,7 +173,7 @@ class MainActivity : AppCompatActivity() {
         val paint = Paint()
         paint.textSize = fontSize * 2.5f
         paint.isAntiAlias = true
-        paint.textAlign = Paint.Align.CENTER
+        paint.textAlign = Paint.Align.LEFT // حالا چپ چین. اگر وسط می‌خواهی، Paint.Align.CENTER بذار و مختصات رو تغییر بده.
 
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
@@ -177,13 +183,38 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "مشکل در لود فونت (${currentFont}): ${e.message}", Toast.LENGTH_SHORT).show()
         }
 
-        // رنگ کل متن فقط (نه spanها) در عکس لحاظ می‌شود
-        paint.color = textColor
-        val text = etText.text.toString()
-        val textLines = text.split("\n")
-        val yStart = height / 2 - (textLines.size - 1) * fontSize * 1.5f
-        for ((i, line) in textLines.withIndex()) {
-            canvas.drawText(line, width / 2f, yStart + i * fontSize * 2.5f, paint)
+        val text = etText.text
+        val lines = text.split("\n")
+        var y = height / 2f - (lines.size - 1) * fontSize * 1.5f
+
+        var charOffset = 0
+
+        for (line in lines) {
+            var x = width / 2f
+            // برای center-align:
+            paint.textAlign = Paint.Align.CENTER
+            x = width / 2f
+            // حالا هر کاراکتر رو با span رنگ مناسب چاپ کن
+            var i = 0
+            while (i < line.length) {
+                val c = line[i]
+                // رنگ پیشفرض span یا کل
+                var charColor = textColor
+                val spans = (text as Spannable).getSpans(charOffset + i, charOffset + i + 1, ForegroundColorSpan::class.java)
+                if (spans.isNotEmpty()) {
+                    charColor = spans[0].foregroundColor
+                }
+                paint.color = charColor
+                // اندازه و موقعیت کاراکتر فعلی
+                val charWidth = paint.measureText(c.toString())
+                // چون center-align هست، باید کل طول خط رو محاسبه کنی:
+                val lineWidth = paint.measureText(line)
+                val charX = x - lineWidth / 2f + paint.measureText(line.substring(0, i))
+                canvas.drawText(c.toString(), charX, y, paint)
+                i++
+            }
+            y += fontSize * 2.5f
+            charOffset += line.length + 1
         }
         imagePreview.setImageBitmap(bmp)
     }
