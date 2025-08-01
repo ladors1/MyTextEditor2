@@ -4,134 +4,135 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
-
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/app_bar_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="ویرایشگر متن حرفه‌ای" />
-    </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
-        <LinearLayout
+        android:fillViewport="true">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
             android:padding="16dp">
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                android:layout_marginBottom="16dp">
-                <ImageView
-                    android:id="@+id/imagePreview"
-                    android:layout_width="match_parent"
-                    android:layout_height="300dp"
-                    android:scaleType="fitCenter"
-                    android:padding="8dp"
-                    android:background="?attr/colorSurfaceContainer"
-                    android:contentDescription="پیش‌نمایش تصویر" />
-            </com.google.android.material.card.MaterialCardView>
+
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilText"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:hint="متن خود را اینجا بنویسید..."
-                android:layout_marginBottom="16dp">
+                android:hint="متن خود را اینجا بنویسید"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="top"
-                    android:minLines="4" />
+                    android:minLines="3" />
+
             </com.google.android.material.textfield.TextInputLayout>
+
+            <Spinner
+                android:id="@+id/spinnerFont"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/tilText"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
             <LinearLayout
-                android:layout_width="match_parent"
+                android:id="@+id/layoutColorButtons"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="فونت:"
-                    android:layout_marginEnd="8dp"
-                    android:textAppearance="?attr/textAppearanceLabelLarge"/>
-                <Spinner
-                    android:id="@+id/spinnerFont"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="48dp"/>
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                app:layout_constraintTop_toBottomOf="@id/spinnerFont"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <ImageButton
+                    android:id="@+id/btnTextColor"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="تغییر رنگ متن" />
+
+                <ImageButton
+                    android:id="@+id/btnBgColor"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_gallery"
+                     app:tint="?attr/colorPrimary"
+                    android:contentDescription="تغییر رنگ پس‌زمینه" />
+
+                <ImageButton
+                    android:id="@+id/btnTransparentBg"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_view"
+                     app:tint="?attr/colorPrimary"
+                    android:contentDescription="پس‌زمینه شفاف" />
+
             </LinearLayout>
+
             <TextView
                 android:id="@+id/tvFontSize"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                tools:text="اندازه فونت: 26"/>
+                tools:text="اندازه فونت: 26"
+                app:layout_constraintTop_toBottomOf="@id/layoutColorButtons"
+                app:layout_constraintStart_toStartOf="parent" />
+
             <SeekBar
                 android:id="@+id/seekFontSize"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:max="100"
-                android:min="10"/>
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+                android:min="10"
+                app:layout_constraintTop_toTopOf="@id/tvFontSize"
+                app:layout_constraintBottom_toBottomOf="@id/tvFontSize"
+                app:layout_constraintStart_toEndOf="@id/tvFontSize"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginStart="16dp"/>
 
-    <com.google.android.material.bottomappbar.BottomAppBar
-        android:id="@+id/bottom_app_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        app:fabAlignmentMode="end"
-        app:hideOnScroll="false">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:paddingEnd="16dp">
-            <ImageButton
-                android:id="@+id/btnTextColor"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="رنگ متن"
-                app:srcCompat="@android:drawable/ic_menu_edit"
-                app:tint="?attr/colorOnSurfaceVariant"/>
-            <ImageButton
-                android:id="@+id/btnBgColor"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="رنگ پس‌زمینه"
-                app:srcCompat="@android:drawable/ic_menu_gallery"
-                app:tint="?attr/colorOnSurfaceVariant"/>
-            <ImageButton
-                android:id="@+id/btnTransparentBg"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="پس‌زمینه شفاف"
-                app:srcCompat="@android:drawable/ic_menu_view"
-                app:tint="?attr/colorOnSurfaceVariant"/>
-        </LinearLayout>
-    </com.google.android.material.bottomappbar.BottomAppBar>
+            <ImageView
+                android:id="@+id/imagePreview"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginTop="16dp"
+                android:background="#f0f0f0"
+                app:layout_constraintDimensionRatio="1:1"
+                app:layout_constraintTop_toBottomOf="@id/seekFontSize"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                android:contentDescription="پیش‌نمایش تصویر" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.core.widget.NestedScrollView>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnSaveImage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="ذخیره تصویر"
-        app:srcCompat="@android:drawable/ic_menu_save"
-        app:layout_anchor="@id/bottom_app_bar" />
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:src="@android:drawable/ic_menu_save"
+        app:tint="@android:color/white"
+        android:contentDescription="ذخیره تصویر" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
