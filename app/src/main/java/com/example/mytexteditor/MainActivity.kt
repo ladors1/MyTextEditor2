@@ -129,45 +129,33 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // حل کامل مشکل رنگ برای متن انتخابی یا کل متن (در ادیت و خروجی)
+    // حل مشکل رنگ برای متن انتخابی یا کل متن (در ادیت و عکس)
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         val spannable = etText.text as Spannable
 
         if (start < end) {
-            // حذف spanهای قبلی فقط در بازه انتخاب شده
             val spans = spannable.getSpans(start, end, ForegroundColorSpan::class.java)
-            for (span in spans) {
-                spannable.removeSpan(span)
-            }
-            spannable.setSpan(
-                ForegroundColorSpan(color),
-                start,
-                end,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
+            for (span in spans) spannable.removeSpan(span)
+            spannable.setSpan(ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         } else {
-            // اگر انتخاب نداره، کل متن رنگی بشه
             val allSpans = spannable.getSpans(0, spannable.length, ForegroundColorSpan::class.java)
-            for (span in allSpans) {
-                spannable.removeSpan(span)
-            }
+            for (span in allSpans) spannable.removeSpan(span)
             etText.setTextColor(color)
             textColor = color
         }
         renderTextImage()
     }
 
-    // حل مشکل برعکس شدن متن فارسی و SafeZone در خروجی عکس
+    // حل معکوس شدن متن فارسی و رعایت SafeZone
     fun renderTextImage() {
         val width = 1080
         val height = 1920
         val safeZone = 80f // فاصله از پایین و لبه‌ها
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        if (!isTransparentBg)
-            canvas.drawColor(bgColor)
+        if (!isTransparentBg) canvas.drawColor(bgColor)
         val paint = Paint()
         paint.textSize = fontSize * 2.5f
         paint.isAntiAlias = true
@@ -176,7 +164,7 @@ class MainActivity : AppCompatActivity() {
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
             paint.typeface = tf
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             paint.typeface = Typeface.DEFAULT
         }
 
@@ -185,19 +173,28 @@ class MainActivity : AppCompatActivity() {
         val yStart = (height - ((textLines.size - 1) * fontSize * 2.5f)) / 2f
         var charOffset = 0
         for ((i, line) in textLines.withIndex()) {
-            val x = width - safeZone // همیشه نزدیک راست تصویر، با فاصله مناسب
-            var j = 0
-            while (j < line.length) {
-                var charColor = textColor
+            val x = width - safeZone
+            var useSpan = false
+            for (j in 0 until line.length) {
                 val spans = (text as Spannable).getSpans(charOffset + j, charOffset + j + 1, ForegroundColorSpan::class.java)
-                if (spans.isNotEmpty()) {
-                    charColor = spans.last().foregroundColor
+                if (spans.isNotEmpty()) { useSpan = true; break }
+            }
+            if (useSpan) {
+                // برای هر کاراکتر span جداگانه بکش
+                var j = 0
+                while (j < line.length) {
+                    var charColor = textColor
+                    val spans = (text as Spannable).getSpans(charOffset + j, charOffset + j + 1, ForegroundColorSpan::class.java)
+                    if (spans.isNotEmpty()) charColor = spans.last().foregroundColor
+                    paint.color = charColor
+                    val charX = x - paint.measureText(line.substring(j))
+                    canvas.drawText(line[j].toString(), charX, yStart + i * fontSize * 2.5f, paint)
+                    j++
                 }
-                paint.color = charColor
-                val prefix = line.substring(0, j)
-                val charX = x - paint.measureText(line.substring(j))
-                canvas.drawText(line[j].toString(), charX, yStart + i * fontSize * 2.5f, paint)
-                j++
+            } else {
+                // خط کاملاً تک‌رنگ: سریع‌تر و تمیزتر
+                paint.color = textColor
+                canvas.drawText(line, x, yStart + i * fontSize * 2.5f, paint)
             }
             charOffset += line.length + 1
         }
