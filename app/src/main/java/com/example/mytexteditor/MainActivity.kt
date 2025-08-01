@@ -125,7 +125,8 @@ class MainActivity : AppCompatActivity() {
                     if (isText) {
                         applyColorToSelection(envelope.color)
                     } else {
-                        bgColor = envelope.color
+                        // برای پس‌زمینه هم رنگ را مات می‌کنیم
+                        bgColor = (envelope.color and 0x00FFFFFF) or (0xFF000000).toInt()
                         renderTextImage(etText.text)
                     }
                 })
@@ -135,7 +136,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyColorToSelection(colorFromPicker: Int) {
         // *** خط کلیدی نهایی: اصلاح رنگ معیوب از کتابخانه ***
-        // ما کانال شفافیت (Alpha) را حذف و آن را با 100% مات جایگزین می‌کنیم
+        // ما کانال شفافیت (Alpha) را حذف و آن را با 100% مات (FF) جایگزین می‌کنیم
         val finalOpaqueColor = (colorFromPicker and 0x00FFFFFF) or (0xFF000000).toInt()
 
         val start = etText.selectionStart
@@ -245,4 +246,4 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "خطا در ذخیره تصویر: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
-}
+}```
