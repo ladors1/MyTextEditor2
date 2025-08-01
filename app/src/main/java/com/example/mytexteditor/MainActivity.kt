@@ -2,6 +2,7 @@ package com.example.mytexteditor
 
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.provider.MediaStore
 import android.text.*
@@ -55,6 +56,7 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
         currentFont = fontList[0]
+        etText.setTextColor(textColor) // ست کردن رنگ اولیه
 
         val fontNames = fontList.map { it.substringBefore(".") }
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, fontNames)
@@ -87,8 +89,19 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        btnTextColor.setOnClickListener { openColorPicker(true) }
-        btnBgColor.setOnClickListener { openColorPicker(false) }
+        btnTextColor.setOnClickListener { openColorPicker() }
+        btnBgColor.setOnClickListener {
+            ColorPickerDialog.Builder(this)
+                .setTitle("انتخاب رنگ پس‌زمینه")
+                .setPreferenceName("BgColorPickerDialog")
+                .setPositiveButton("تأیید",
+                    ColorEnvelopeListener { envelope, _ ->
+                        bgColor = envelope.color
+                        renderTextImage()
+                    })
+                .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
+                .show()
+        }
         btnTransparentBg.setOnClickListener {
             isTransparentBg = !isTransparentBg
             renderTextImage()
@@ -112,52 +125,59 @@ class MainActivity : AppCompatActivity() {
         return validFonts
     }
 
-    fun openColorPicker(isText: Boolean) {
+    fun openColorPicker() {
         ColorPickerDialog.Builder(this)
-            .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
-            .setPreferenceName("ColorPickerDialog")
+            .setTitle("انتخاب رنگ متن")
+            .setPreferenceName("TextColorPickerDialog")
             .setPositiveButton("تأیید",
                 ColorEnvelopeListener { envelope, _ ->
-                    if (isText) {
-                        applyColorToSelection(envelope.color)
-                    } else {
-                        bgColor = envelope.color
-                        renderTextImage()
-                    }
+                    applyColorToSelection(envelope.color)
                 })
             .setNegativeButton("انصراف") { dialogInterface, _ -> dialogInterface.dismiss() }
             .show()
     }
-    
-    // **اصلاح شده**
+
+    // **اصلاح شده برای اعمال صحیح رنگ**
     fun applyColorToSelection(color: Int) {
         val start = etText.selectionStart
         val end = etText.selectionEnd
         val spannable = etText.text as Spannable
 
-        // اگر هیچ متنی انتخاب نشده بود، کل متن را رنگی کن
-        val selectionStart = if (start == end) 0 else start
-        val selectionEnd = if (start == end) etText.length() else end
+        val selectionStart: Int
+        val selectionEnd: Int
 
-        // حذف رنگ‌های قبلی در محدوده انتخابی
-        val oldSpans = spannable.getSpans(selectionStart, selectionEnd, ForegroundColorSpan::class.java)
-        for (span in oldSpans) {
-            spannable.removeSpan(span)
-        }
-
-        // اعمال رنگ جدید
-        spannable.setSpan(ForegroundColorSpan(color), selectionStart, selectionEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        
-        // اگر هیچ متنی انتخاب نشده بود، رنگ پیش‌فرض متن را نیز به‌روز کن
-        if (start == end) {
+        // اگر متنی انتخاب نشده بود، کل متن را هدف قرار بده
+        if (start == end && etText.length() > 0) {
+            selectionStart = 0
+            selectionEnd = etText.length()
+            // رنگ پیش‌فرض کلی را هم به‌روز کن
             textColor = color
-            etText.setTextColor(color) // برای نمایش صحیح در EditText
+        } else {
+            selectionStart = start
+            selectionEnd = end
         }
 
+        // اگر محدوده معتبری برای رنگ کردن وجود دارد
+        if (selectionStart < selectionEnd) {
+            // ابتدا رنگ‌های قبلی در آن محدوده را پاک کن
+            val oldSpans = spannable.getSpans(selectionStart, selectionEnd, ForegroundColorSpan::class.java)
+            for (span in oldSpans) {
+                spannable.removeSpan(span)
+            }
+            // سپس رنگ جدید را اعمال کن
+            spannable.setSpan(ForegroundColorSpan(color), selectionStart, selectionEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        } else if (start == end && etText.length() == 0) {
+             // اگر متنی وجود ندارد، فقط رنگ پیش‌فرض را تغییر بده
+            textColor = color
+            etText.setTextColor(textColor)
+        }
+
+
+        // به‌روزرسانی پیش‌نمایش
         renderTextImage()
     }
 
-    // **اصلاح شده و بهینه‌سازی شده با StaticLayout**
+    // استفاده از StaticLayout برای رندر صحیح
     fun renderTextImage() {
         val width = 1080
         val height = 1920
@@ -171,31 +191,28 @@ class MainActivity : AppCompatActivity() {
         }
 
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
-        textPaint.color = textColor // رنگ پیش‌فرض
+        textPaint.color = textColor // رنگ پیش‌فرض برای بخش‌های بدون Span
         textPaint.textSize = fontSize * 2.5f
-        
+
         try {
             val tf = Typeface.createFromAsset(assets, "fonts/$currentFont")
             textPaint.typeface = tf
         } catch (_: Exception) {
             textPaint.typeface = Typeface.DEFAULT
         }
-        
+
         val text: Spanned = etText.text
 
-        // استفاده از StaticLayout برای مدیریت خودکار خطوط و چینش
         val textLayout = StaticLayout.Builder.obtain(text, 0, text.length, textPaint, width - (safeZone * 2).toInt())
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setLineSpacing(0f, 1.0f)
             .setIncludePad(true)
             .build()
-        
-        // محاسبه موقعیت برای قرارگیری در مرکز عمودی
+
         val textHeight = textLayout.height
         val yStart = (height - textHeight) / 2f
 
         canvas.save()
-        // جابجایی canvas به موقعیت درست برای رسم
         canvas.translate(safeZone, yStart)
         textLayout.draw(canvas)
         canvas.restore()
@@ -203,21 +220,21 @@ class MainActivity : AppCompatActivity() {
         imagePreview.setImageBitmap(bmp)
     }
 
-
+    // **اصلاح شده برای ذخیره صحیح شفافیت**
     fun saveImage() {
         try {
-            // برای اطمینان از کیفیت، از خود بیت‌مپ رندر شده استفاده کنید
-            imagePreview.isDrawingCacheEnabled = true
-            val bmp = imagePreview.drawingCache
-            
-            MediaStore.Images.Media.insertImage(
-                contentResolver, bmp, "TextImage", "متن ذخیره شده"
-            )
-            Toast.makeText(this, "تصویر ذخیره شد و قابل استفاده برای استوری یا استیکر!", Toast.LENGTH_LONG).show()
+            val drawable = imagePreview.drawable
+            if (drawable is BitmapDrawable) {
+                val bmp = drawable.bitmap
+                MediaStore.Images.Media.insertImage(
+                    contentResolver, bmp, "TextImage", "متن ذخیره شده"
+                )
+                Toast.makeText(this, "تصویر ذخیره شد و قابل استفاده برای استوری یا استیکر!", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "خطا: بیت‌مپ تصویر پیدا نشد.", Toast.LENGTH_LONG).show()
+            }
         } catch (e: Exception) {
             Toast.makeText(this, "خطا در ذخیره تصویر: ${e.message}", Toast.LENGTH_LONG).show()
-        } finally {
-            imagePreview.isDrawingCacheEnabled = false
         }
     }
 }
