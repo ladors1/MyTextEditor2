@@ -38,7 +38,6 @@ class MainActivity : AppCompatActivity() {
     private var currentFontPath = ""
     private var fontList: Map<String, String> = mapOf()
     private var isProgrammaticTextChange = false
-    private var baseTextColor = Color.BLACK
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,7 +117,6 @@ class MainActivity : AppCompatActivity() {
         btnSaveImage.setOnClickListener { saveImage() }
     }
 
-    // *** این بخش برای رفع خطای کامپایل اصلاح شد ***
     private fun openColorPicker(isText: Boolean) {
         ColorPickerDialog.Builder(this)
             .setTitle(if (isText) "انتخاب رنگ متن" else "انتخاب رنگ پس‌زمینه")
@@ -139,32 +137,28 @@ class MainActivity : AppCompatActivity() {
         val start = etText.selectionStart
         val end = etText.selectionEnd
 
+        // اگر متنی وجود ندارد، رنگ پیش‌فرض تایپ را تغییر بده
+        if (etText.length() == 0) {
+            etText.setTextColor(color)
+            return
+        }
+
         val newText = SpannableStringBuilder(etText.text)
         val targetStart = if (start == end) 0 else start
         val targetEnd = if (start == end) newText.length else end
 
-        if (targetStart >= targetEnd && newText.isNotEmpty()) return
-        
-        if (newText.isEmpty()) {
-            baseTextColor = color
-            etText.setTextColor(color)
-            return
-        }
-        
-        // پاک کردن رنگ‌های قبلی
+        if (targetStart >= targetEnd) return
+
+        // پاک کردن رنگ‌های قبلی از محدوده
         newText.getSpans(targetStart, targetEnd, ForegroundColorSpan::class.java).forEach {
             newText.removeSpan(it)
         }
         // اعمال رنگ جدید
         newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        
-        if (start == end) {
-            baseTextColor = color
-        }
 
         isProgrammaticTextChange = true
         etText.text = newText
-        etText.setSelection(end)
+        etText.setSelection(end) // بازگرداندن مکان‌نما به جای درست
         isProgrammaticTextChange = false
 
         renderTextImage(newText)
@@ -194,10 +188,10 @@ class MainActivity : AppCompatActivity() {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeInSp)
             try {
                 typeface = Typeface.createFromAsset(context.assets, currentFontPath)
-            } catch (e: Exception) {
-                // fallback to default
-            }
-            setTextColor(baseTextColor)
+            } catch (e: Exception) { /* fallback to default */ }
+            
+            // *** تغییر کلیدی: رنگ پایه همیشه سیاه است و Span ها آن را بازنویسی می‌کنند ***
+            setTextColor(Color.BLACK) 
             gravity = android.view.Gravity.CENTER
         }
 
