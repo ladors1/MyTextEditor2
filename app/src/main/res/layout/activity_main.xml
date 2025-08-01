@@ -4,75 +4,87 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="?attr/colorSurfaceContainerLowest"
     tools:context=".MainActivity">
 
-    <!-- نوار ابزار ثابت و زیبا در پایین صفحه -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/bottom_toolbar"
+    <!-- نوار ابزار ثابت در پایین صفحه -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/bottom_app_bar_layout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:cardElevation="8dp"
-        app:cardCornerRadius="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
+        <com.google.android.material.bottomappbar.BottomAppBar
+            android:id="@+id/bottom_app_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="8dp">
+            android:layout_gravity="bottom"
+            app:fabAlignmentMode="end"
+            app:hideOnScroll="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:paddingEnd="16dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ابزارها:"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                <View
+                    android:id="@+id/active_color_view"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/color_preview_background"/>
 
                 <ImageButton
                     android:id="@+id/btnTextColor"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_format_color_text"
-                    app:tint="?attr/colorOnSurface"
-                    android:contentDescription="انتخاب رنگ متن" />
-                
+                    android:contentDescription="انتخاب رنگ متن"
+                    app:srcCompat="@android:drawable/ic_menu_edit"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
                 <ImageButton
                     android:id="@+id/btnBgColor"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_format_color_fill"
-                    app:tint="?attr/colorOnSurface"
-                    android:contentDescription="انتخاب رنگ پس‌زمینه" />
+                    android:contentDescription="انتخاب رنگ پس‌زمینه"
+                    app:srcCompat="@android:drawable/ic_menu_gallery"
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
                 <ImageButton
                     android:id="@+id/btnTransparentBg"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_transparent"
-                    app:tint="?attr/colorOnSurface"
-                    android:contentDescription="پس‌زمینه شفاف" />
-
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"/>
-
-                <Button
-                    android:id="@+id/btnSaveImage"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="ذخیره"
-                    app:icon="@drawable/ic_save" />
+                    android:contentDescription="پس‌زمینه شفاف"
+                    app:srcCompat="@android:drawable/ic_menu_view"
+                    app:tint="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+        </com.google.android.material.bottomappbar.BottomAppBar>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnSaveImage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="ذخیره تصویر"
+        app:srcCompat="@android:drawable/ic_menu_save"
+        app:layout_anchorGravity="top|end"
+        app:layout_constraintBottom_toTopOf="@id/bottom_app_bar_layout"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"/>
 
     <!-- محتوای اصلی که قابل اسکرول است -->
     <ScrollView
@@ -80,7 +92,7 @@
         android:layout_height="0dp"
         android:fillViewport="true"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottom_toolbar"
+        app:layout_constraintBottom_toTopOf="@id/bottom_app_bar_layout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -120,7 +132,7 @@
                     android:gravity="top"
                     android:minLines="4" />
             </com.google.android.material.textfield.TextInputLayout>
-            
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
