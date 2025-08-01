@@ -3,6 +3,7 @@ package com.example.mytexteditor
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
@@ -12,7 +13,9 @@ import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
 import android.view.View
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import com.skydoves.colorpickerview.ColorEnvelope
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
@@ -28,9 +31,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnBgColor: ImageButton
     private lateinit var btnTransparentBg: ImageButton
     private lateinit var imagePreview: ImageView
-    private lateinit var btnSaveImage: Button
+    private lateinit var btnSaveImage: FloatingActionButton
     private lateinit var seekFontSize: SeekBar
     private lateinit var tvFontSize: TextView
+    private lateinit var activeColorView: View
 
     // وضعیت
     private var bgColor = Color.WHITE
@@ -39,15 +43,19 @@ class MainActivity : AppCompatActivity() {
     private var currentFontPath = ""
     private var fontList: Map<String, String> = mapOf()
     private var isProgrammaticTextChange = false
+    private var activeTextColor = Color.BLACK
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // **حل مشکل UI که زیر نوار گوشی می‌رفت**
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        
         setContentView(R.layout.activity_main)
 
         bindViews()
         setupFonts()
         setupListeners()
-
+        updateActiveColorView()
         renderTextImage(etText.text)
     }
 
@@ -61,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         btnSaveImage = findViewById(R.id.btnSaveImage)
         seekFontSize = findViewById(R.id.seekFontSize)
         tvFontSize = findViewById(R.id.tvFontSize)
+        activeColorView = findViewById(R.id.active_color_view)
     }
 
     private fun setupFonts() {
@@ -115,7 +124,9 @@ class MainActivity : AppCompatActivity() {
                 ColorEnvelopeListener { envelope, _ ->
                     val opaqueColor = (envelope.color and 0x00FFFFFF) or (0xFF000000).toInt()
                     if (isText) {
-                        applyColorToSelection(opaqueColor)
+                        activeTextColor = opaqueColor
+                        updateActiveColorView()
+                        applyColorToSelection(activeTextColor)
                     } else {
                         bgColor = opaqueColor
                         renderTextImage(etText.text)
@@ -130,6 +141,8 @@ class MainActivity : AppCompatActivity() {
         val end = etText.selectionEnd
 
         val newText = SpannableStringBuilder(etText.text)
+        
+        // اگر متنی انتخاب نشده، کل متن را رنگ کن. در غیر اینصورت، فقط بخش انتخابی را.
         val targetStart = if (start == end) 0 else start
         val targetEnd = if (start == end) newText.length else end
 
@@ -141,9 +154,12 @@ class MainActivity : AppCompatActivity() {
         newText.setSpan(ForegroundColorSpan(color), targetStart, targetEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         isProgrammaticTextChange = true
+        val selectionStart = etText.selectionStart
         val selectionEnd = etText.selectionEnd
         etText.text = newText
-        etText.setSelection(selectionEnd)
+        if(selectionStart >= 0 && selectionEnd >= 0) {
+            etText.setSelection(selectionStart, selectionEnd)
+        }
         isProgrammaticTextChange = false
 
         renderTextImage(newText)
@@ -173,10 +189,8 @@ class MainActivity : AppCompatActivity() {
             try {
                 typeface = Typeface.createFromAsset(context.assets, currentFontPath)
             } catch (e: Exception) {}
-            
-            // *** خطای کلیدی اینجا بود و حذف شد ***
-            // setTextColor(Color.BLACK) << این خط باعث میشد همه رنگها نادیده گرفته شوند
-            
+            // **مهمترین تغییر اینجا بود: این خط حذف شد تا رنگ‌های Span نادیده گرفته نشوند**
+            // setTextColor(Color.BLACK) 
             gravity = android.view.Gravity.CENTER
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
@@ -194,6 +208,11 @@ class MainActivity : AppCompatActivity() {
         canvas.restore()
 
         imagePreview.setImageBitmap(bmp)
+    }
+
+    private fun updateActiveColorView() {
+        val background = activeColorView.background as? GradientDrawable
+        background?.setColor(activeTextColor)
     }
 
     private fun getFontList(context: Context): Map<String, String> {
@@ -219,7 +238,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         try {
-            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)?.let { uri ->
+            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_URI, contentValues)?.let { uri ->
                 contentResolver.openOutputStream(uri)?.use { stream ->
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
                 }
