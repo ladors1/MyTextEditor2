@@ -2,72 +2,72 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#f5f6fa"
-    android:padding="0dp">
+    android:fillViewport="true"
+    android:background="#FFF">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="20dp"
-        android:gravity="center_horizontal">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <TextView
-            android:id="@+id/tvTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="ادیتور حرفه‌ای متن"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="#222"
-            android:layout_marginBottom="16dp"/>
-
+        <!-- EditText متن (راست‌چین و فارسی) -->
         <EditText
             android:id="@+id/etText"
             android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:hint="متن خود را وارد کنید..."
-            android:gravity="top|right"
-            android:background="@drawable/edittext_bg"
+            android:layout_height="160dp"
+            android:hint="متن خود را اینجا بنویسید..."
+            android:gravity="right|top"
+            android:textDirection="rtl"
+            android:background="@drawable/bg_rounded_edittext"
+            android:textColor="#000"
             android:textSize="22sp"
-            android:textColor="#222"
-            android:layout_marginBottom="14dp"
-            android:maxLines="5"
-            android:minLines="3"
             android:padding="12dp"
-            android:inputType="textMultiLine|textCapSentences"/>
+            android:maxLines="8"
+            android:scrollbars="vertical"
+            android:inputType="textMultiLine|textCapSentences"
+            android:overScrollMode="always"
+            android:layout_marginBottom="16dp" />
 
+        <!-- انتخاب فونت -->
+        <Spinner
+            android:id="@+id/spinnerFont"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" />
+
+        <!-- انتخاب رنگ متن و پس‌زمینه -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
             android:layout_marginBottom="8dp">
 
             <Button
                 android:id="@+id/btnTextColor"
                 android:layout_width="0dp"
-                android:layout_weight="1"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="رنگ متن" />
 
             <Button
                 android:id="@+id/btnBgColor"
                 android:layout_width="0dp"
-                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="پس‌زمینه" 
+                android:layout_weight="1"
+                android:text="رنگ پس‌زمینه"
                 android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"/>
+                android:layout_marginEnd="8dp" />
 
             <Button
                 android:id="@+id/btnTransparentBg"
                 android:layout_width="0dp"
-                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="متن بدون پس‌زمینه"/>
+                android:layout_weight="1"
+                android:text="پس‌زمینه شفاف" />
         </LinearLayout>
 
+        <!-- سایز فونت -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -75,49 +75,44 @@
             android:gravity="center_vertical"
             android:layout_marginBottom="12dp">
 
-            <Spinner
-                android:id="@+id/spinnerFont"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:spinnerMode="dropdown"
-                android:layout_marginEnd="8dp"/>
-
             <TextView
                 android:id="@+id/tvFontSize"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="اندازه فونت: 26"
-                android:textColor="#444"
-                android:textSize="16sp"
-                android:layout_gravity="center"/>
+                android:textSize="18sp" />
 
             <SeekBar
                 android:id="@+id/seekFontSize"
-                android:layout_width="120dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:max="64"
-                android:progress="26"
-                android:layout_marginStart="8dp"/>
+                android:layout_weight="1"
+                android:max="100"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="6dp"/>
         </LinearLayout>
 
-        <ImageView
-            android:id="@+id/imagePreview"
+        <!-- پیش‌نمایش عکس متن -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="220dp"
-            android:layout_marginBottom="12dp"
-            android:background="@drawable/edittext_bg"
-            android:scaleType="fitCenter"/>
+            android:layout_height="340dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_rounded_frame">
 
+            <ImageView
+                android:id="@+id/imagePreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter"
+                android:adjustViewBounds="true"/>
+        </FrameLayout>
+
+        <!-- دکمه ذخیره تصویر -->
         <Button
             android:id="@+id/btnSaveImage"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginBottom="16dp"
-            android:text="ذخیره به عنوان تصویر"
-            android:textSize="18sp"
-            android:background="@color/purple_200"
-            android:textColor="#fff"
-            android:elevation="2dp"/>
+            android:layout_height="wrap_content"
+            android:text="ذخیره تصویر" />
+
     </LinearLayout>
 </ScrollView>
